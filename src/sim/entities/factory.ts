@@ -16,6 +16,19 @@ export interface MoldInProgress {
   readyOnDay: number;
 }
 
+export interface MaterialShipment {
+  id: string;
+  materialId: string;
+  kg: number;
+  arrivalDay: number;
+}
+
+export interface MoldTransfer {
+  id: string;
+  mold: Mold;
+  arrivalDay: number;
+}
+
 export interface Factory {
   id: string;
   name: string;
@@ -28,6 +41,10 @@ export interface Factory {
   activeContracts: Contract[];
   availableContracts: Contract[];
   events: FactoryEvent[];
+  /** In-transit resin shipments incoming from another factory. */
+  incomingMaterialShipments: MaterialShipment[];
+  /** In-transit molds (with their existing wear/cycle history) incoming from another factory. */
+  incomingMoldTransfers: MoldTransfer[];
 }
 
 let eventSeq = 0;
@@ -49,5 +66,7 @@ export function createFactory(id: string, name: string): Factory {
     activeContracts: [],
     availableContracts: [],
     events: [],
+    incomingMaterialShipments: [],
+    incomingMoldTransfers: [],
   };
 }

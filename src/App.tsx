@@ -7,13 +7,15 @@ import { HRPanel } from './ui/panels/HRPanel';
 import { FinancePanel } from './ui/panels/FinancePanel';
 import { MoldDesignPanel } from './ui/panels/MoldDesignPanel';
 import { ResearchPanel } from './ui/panels/ResearchPanel';
+import { LogisticsPanel } from './ui/panels/LogisticsPanel';
 import { useGameStore } from './store/gameStore';
 import type { SimSpeed } from './sim/clock';
+import { foundFactoryCost } from './sim/systems/financeSystem';
 import { formatCurrency, formatDay } from './ui/format';
 
-type Tab = 'dashboard' | 'contracts' | 'machines' | 'hr' | 'finance' | 'design' | 'research';
+type Tab = 'dashboard' | 'contracts' | 'machines' | 'hr' | 'finance' | 'design' | 'research' | 'logistics';
 
-const TABS: { id: Tab; label: string }[] = [
+const BASE_TABS: { id: Tab; label: string }[] = [
   { id: 'dashboard', label: 'Vue d’ensemble' },
   { id: 'contracts', label: 'Contrats' },
   { id: 'machines', label: 'Presses' },
@@ -28,7 +30,12 @@ const SPEEDS: SimSpeed[] = [0, 1, 2, 4];
 function App() {
   const [tab, setTab] = useState<Tab>('dashboard');
   useGameStore((s) => s.tickCount);
-  const { clock, company, setSpeed, saveGame, loadGame, resetGame, hasExistingSave } = useGameStore.getState();
+  const {
+    clock, company, selectedFactoryId, setSpeed, saveGame, loadGame, resetGame, hasExistingSave, foundFactory, selectFactory,
+  } = useGameStore.getState();
+
+  const TABS = company.factories.length > 1 ? [...BASE_TABS, { id: 'logistics' as const, label: 'Logistique' }] : BASE_TABS;
+  const nextFactoryCost = foundFactoryCost(company);
 
   return (
     <div className="app">
@@ -60,6 +67,25 @@ function App() {
         </div>
       </header>
 
+      <div className="factory-bar">
+        {company.factories.map((f) => (
+          <button
+            key={f.id}
+            className={f.id === selectedFactoryId ? 'factory-tab factory-tab--active' : 'factory-tab'}
+            onClick={() => selectFactory(f.id)}
+          >
+            {f.name}
+          </button>
+        ))}
+        <button
+          className="factory-tab factory-tab--new"
+          disabled={company.cash < nextFactoryCost}
+          onClick={() => foundFactory(`Usine n°${company.factories.length + 1}`)}
+        >
+          + Nouvelle usine ({formatCurrency(nextFactoryCost)})
+        </button>
+      </div>
+
       <div className="app-body">
         <div className="app-canvas">
           <PhaserGame />
@@ -84,6 +110,7 @@ function App() {
             {tab === 'finance' && <FinancePanel />}
             {tab === 'design' && <MoldDesignPanel />}
             {tab === 'research' && <ResearchPanel />}
+            {tab === 'logistics' && <LogisticsPanel />}
           </div>
         </aside>
       </div>

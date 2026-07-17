@@ -90,6 +90,18 @@ h3 { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-
 
 .save-controls { display: flex; gap: 6px; }
 
+.factory-bar {
+  display: flex;
+  gap: 6px;
+  padding: 6px 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.factory-tab { font-size: 12px; }
+.factory-tab--active { border-color: var(--accent); color: var(--accent); }
+.factory-tab--new { margin-left: auto; color: var(--text-dim); }
+
 .app-body {
   flex: 1;
   display: flex;

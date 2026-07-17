@@ -3,7 +3,10 @@ import { createCompany } from '../entities/company';
 import { createFactory } from '../entities/factory';
 import { createPress } from '../entities/press';
 import { createEmployee } from '../entities/employee';
-import { purchasePress, dailyFinanceUpdate, buyMaterial, takeLoan, designMold, startResearch } from './financeSystem';
+import {
+  purchasePress, dailyFinanceUpdate, buyMaterial, takeLoan, designMold, startResearch,
+  foundFactory, foundFactoryCost, transferMaterialCost, chargeMaterialTransfer, chargeMoldTransfer, MOLD_TRANSFER_COST,
+} from './financeSystem';
 import { getMaterial } from '../../data/materials';
 import { getMoldFamily } from '../../data/moldFamilies';
 
@@ -124,6 +127,63 @@ describe('financeSystem', () => {
       expect(result.ok).toBe(true);
       expect(company.cash).toBe(100000 - 30000);
       expect(company.researchInProgress).toEqual({ techId: 'material_pa66', daysRemaining: 8 });
+    });
+  });
+
+  describe('foundFactory', () => {
+    it('cost rises with each existing factory', () => {
+      const company = createCompany();
+      company.factories.push(createFactory('f1', 'Usine 1'));
+      const costFor2nd = foundFactoryCost(company);
+      company.factories.push(createFactory('f2', 'Usine 2'));
+      const costFor3rd = foundFactoryCost(company);
+      expect(costFor3rd).toBeGreaterThan(costFor2nd);
+    });
+
+    it('rejects insufficient cash', () => {
+      const company = createCompany();
+      company.factories.push(createFactory('f1', 'Usine 1'));
+      company.cash = 10;
+      expect(foundFactory(company).ok).toBe(false);
+    });
+
+    it('deducts the scaled cost on success', () => {
+      const company = createCompany();
+      company.factories.push(createFactory('f1', 'Usine 1'));
+      company.cash = 1000000;
+      const cost = foundFactoryCost(company);
+      const result = foundFactory(company);
+      expect(result.ok).toBe(true);
+      expect(company.cash).toBe(1000000 - cost);
+    });
+  });
+
+  describe('inter-factory transfer costs', () => {
+    it('transferMaterialCost scales with kg', () => {
+      expect(transferMaterialCost(200)).toBeGreaterThan(transferMaterialCost(100));
+    });
+
+    it('chargeMaterialTransfer rejects insufficient cash and deducts on success', () => {
+      const poor = createCompany();
+      poor.cash = 1;
+      expect(chargeMaterialTransfer(poor, 500).ok).toBe(false);
+
+      const rich = createCompany();
+      rich.cash = 10000;
+      const cost = transferMaterialCost(500);
+      expect(chargeMaterialTransfer(rich, 500).ok).toBe(true);
+      expect(rich.cash).toBe(10000 - cost);
+    });
+
+    it('chargeMoldTransfer rejects insufficient cash and deducts the flat cost on success', () => {
+      const poor = createCompany();
+      poor.cash = 1;
+      expect(chargeMoldTransfer(poor).ok).toBe(false);
+
+      const rich = createCompany();
+      rich.cash = 10000;
+      expect(chargeMoldTransfer(rich).ok).toBe(true);
+      expect(rich.cash).toBe(10000 - MOLD_TRANSFER_COST);
     });
   });
 });

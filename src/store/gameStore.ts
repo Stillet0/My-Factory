@@ -18,10 +18,15 @@ import {
   designMold as designMoldFinance,
   startResearch as startResearchFinance,
   AUTOMATION_UPGRADE_COST,
+  foundFactory as foundFactoryFinance,
+  chargeMaterialTransfer,
+  chargeMoldTransfer,
+  TRANSIT_DAYS,
 } from '../sim/systems/financeSystem';
 import { repairCost, preventiveCost, performRepair, performPreventiveMaintenance } from '../sim/systems/maintenanceSystem';
 import { dailyMoldUpdate } from '../sim/systems/moldSystem';
 import { dailyResearchUpdate } from '../sim/systems/researchSystem';
+import { dailyLogisticsUpdate } from '../sim/systems/logisticsSystem';
 import { getMaterial, MATERIALS } from '../data/materials';
 import { getMoldTemplate } from '../data/molds';
 import { getMoldFamily, type MoldDesignSpec } from '../data/moldFamilies';
@@ -31,9 +36,15 @@ import { saveGame, loadGame, hasSave } from '../save/saveManager';
 let pressSeq = 0;
 let moldSeq = 0;
 let moldQueueSeq = 0;
+let factorySeq = 1;
+let shipmentSeq = 0;
+let transferSeq = 0;
 function nextPressId(): string { pressSeq++; return `press_${pressSeq}`; }
 function nextMoldId(): string { moldSeq++; return `moldinst_${moldSeq}`; }
 function nextMoldQueueId(): string { moldQueueSeq++; return `moldq_${moldQueueSeq}`; }
+function nextFactoryId(): string { factorySeq++; return `factory_${factorySeq}`; }
+function nextShipmentId(): string { shipmentSeq++; return `ship_${shipmentSeq}`; }
+function nextTransferId(): string { transferSeq++; return `transfer_${transferSeq}`; }
 
 const LEGACY_MOLD_TO_FAMILY: Record<string, string> = {
   mold_cap: 'cap',
@@ -42,15 +53,24 @@ const LEGACY_MOLD_TO_FAMILY: Record<string, string> = {
   mold_toy: 'toy',
 };
 
-function buildInitialFactory(): Factory {
-  const factory = createFactory('factory_1', 'Usine n°1');
+const STARTER_EMPLOYEE_NAMES: [string, string] = ['Marc Dubois', 'Sophie Laurent'];
+
+/** Seeds a brand-new factory with the same minimal starter kit as the
+ * company's very first plant, so it's immediately usable rather than an
+ * empty shell requiring several purchases before anything can run. */
+function seedStarterFactory(factory: Factory, day: number, employeeNames: [string, string] = STARTER_EMPLOYEE_NAMES): void {
   const press = createPress(nextPressId(), 'press_60t');
   const mold = createMold('mold_cap', nextMoldId());
   factory.presses.push(press);
   factory.molds.push(mold);
-  factory.employees.push(createEmployee('operator', 'morning', 0, 'Marc Dubois'));
-  factory.employees.push(createEmployee('setter', 'morning', 0, 'Sophie Laurent'));
+  factory.employees.push(createEmployee('operator', 'morning', day, employeeNames[0]));
+  factory.employees.push(createEmployee('setter', 'morning', day, employeeNames[1]));
   factory.materialStockKg['pp'] = 400;
+}
+
+function buildInitialFactory(): Factory {
+  const factory = createFactory('factory_1', 'Usine n°1');
+  seedStarterFactory(factory, 0);
   return factory;
 }
 
@@ -91,6 +111,11 @@ interface GameStore {
 
   startResearch: (techId: string) => void;
   automatePress: (factoryId: string, pressId: string) => void;
+
+  foundFactory: (name: string) => void;
+  selectFactory: (factoryId: string) => void;
+  transferMaterial: (fromFactoryId: string, toFactoryId: string, materialId: string, kg: number) => void;
+  transferMold: (fromFactoryId: string, toFactoryId: string, moldId: string) => void;
 
   saveGame: () => void;
   loadGame: () => void;
@@ -133,6 +158,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           dailyHrUpdate(factory, clock.simTimeMs);
           dailyMarketUpdate(company, factory, clock.simTimeMs);
           dailyMoldUpdate(company, factory, clock.day, clock.simTimeMs, nextMoldId);
+          dailyLogisticsUpdate(factory, clock.day, clock.simTimeMs);
           dailyFinanceUpdate(company, factory, clock.day);
         }
       }
@@ -286,6 +312,54 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ tickCount: get().tickCount + 1 });
   },
 
+  foundFactory: (name) => {
+    const { company, clock } = get();
+    const result = foundFactoryFinance(company);
+    if (!result.ok) return;
+    const factory = createFactory(nextFactoryId(), name);
+    seedStarterFactory(factory, clock.day);
+    company.factories.push(factory);
+    pushEvent(factory, clock.simTimeMs, 'info', `${factory.name} fondée !`);
+    set({ selectedFactoryId: factory.id, tickCount: get().tickCount + 1 });
+  },
+
+  selectFactory: (factoryId) => {
+    const { company } = get();
+    if (!company.factories.some((f) => f.id === factoryId)) return;
+    set({ selectedFactoryId: factoryId, tickCount: get().tickCount + 1 });
+  },
+
+  transferMaterial: (fromFactoryId, toFactoryId, materialId, kg) => {
+    const { company, clock } = get();
+    if (fromFactoryId === toFactoryId || kg <= 0) return;
+    const from = findFactory(company, fromFactoryId);
+    const to = findFactory(company, toFactoryId);
+    const stock = from.materialStockKg[materialId] ?? 0;
+    if (stock < kg) return;
+    const result = chargeMaterialTransfer(company, kg);
+    if (!result.ok) return;
+    from.materialStockKg[materialId] = stock - kg;
+    to.incomingMaterialShipments.push({ id: nextShipmentId(), materialId, kg, arrivalDay: clock.day + TRANSIT_DAYS });
+    pushEvent(from, clock.simTimeMs, 'info', `${kg} kg de ${getMaterial(materialId).name} expédiés vers ${to.name}.`);
+    set({ tickCount: get().tickCount + 1 });
+  },
+
+  transferMold: (fromFactoryId, toFactoryId, moldId) => {
+    const { company, clock } = get();
+    if (fromFactoryId === toFactoryId) return;
+    const from = findFactory(company, fromFactoryId);
+    const to = findFactory(company, toFactoryId);
+    const idx = from.molds.findIndex((m) => m.id === moldId);
+    if (idx === -1) return;
+    if (from.presses.some((p) => p.moldId === moldId)) return;
+    const result = chargeMoldTransfer(company);
+    if (!result.ok) return;
+    const [mold] = from.molds.splice(idx, 1);
+    to.incomingMoldTransfers.push({ id: nextTransferId(), mold, arrivalDay: clock.day + TRANSIT_DAYS });
+    pushEvent(from, clock.simTimeMs, 'info', `Moule expédié vers ${to.name}.`);
+    set({ tickCount: get().tickCount + 1 });
+  },
+
   saveGame: () => {
     const { clock, company } = get();
     saveGame(clock, company);
@@ -300,6 +374,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     company.researchInProgress ??= null;
     for (const factory of company.factories) {
       factory.moldsInProgress ??= [];
+      factory.incomingMaterialShipments ??= [];
+      factory.incomingMoldTransfers ??= [];
       for (const press of factory.presses) press.automated ??= false;
       for (const contract of [...factory.activeContracts, ...factory.availableContracts]) {
         const legacy = contract as unknown as { familyId?: string; moldTemplateId?: string };

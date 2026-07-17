@@ -31,6 +31,22 @@ export function Dashboard() {
         </div>
       </div>
 
+      {company.factories.length > 1 && (
+        <>
+          <h3>Toutes les usines</h3>
+          <ul className="press-status-list">
+            {company.factories.map((f) => (
+              <li key={f.id} className={`press-status${f.id === selectedFactoryId ? ' press-status--ejecting' : ''}`}>
+                <span className="press-status__name">{f.name}</span>
+                <span>{f.presses.length} presse(s)</span>
+                <span>{f.employees.length} employé(s)</span>
+                <span>{f.activeContracts.length} contrat(s) actif(s)</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
       <h3>Presses</h3>
       <ul className="press-status-list">
         {factory.presses.map((press) => {

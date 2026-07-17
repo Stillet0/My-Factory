@@ -141,6 +141,41 @@ export function startResearch(company: Company, techId: string): { ok: boolean; 
   return { ok: true };
 }
 
+export const BASE_NEW_FACTORY_COST = 80000;
+export const TRANSIT_DAYS = 2;
+export const MATERIAL_TRANSFER_COST_PER_KG = 0.4;
+export const MOLD_TRANSFER_COST = 2000;
+
+/** Founding cost rises with each factory already owned — reflects a growing
+ * company having more capital tied up and pricier real estate/permits. */
+export function foundFactoryCost(company: Company): number {
+  return Math.round(BASE_NEW_FACTORY_COST * Math.pow(1.6, company.factories.length - 1));
+}
+
+export function foundFactory(company: Company): { ok: boolean; reason?: string } {
+  const cost = foundFactoryCost(company);
+  if (company.cash < cost) return { ok: false, reason: 'Trésorerie insuffisante' };
+  company.cash -= cost;
+  return { ok: true };
+}
+
+export function transferMaterialCost(kg: number): number {
+  return Math.round(kg * MATERIAL_TRANSFER_COST_PER_KG * 100) / 100;
+}
+
+export function chargeMaterialTransfer(company: Company, kg: number): { ok: boolean; reason?: string } {
+  const cost = transferMaterialCost(kg);
+  if (company.cash < cost) return { ok: false, reason: 'Trésorerie insuffisante pour le transport' };
+  company.cash -= cost;
+  return { ok: true };
+}
+
+export function chargeMoldTransfer(company: Company): { ok: boolean; reason?: string } {
+  if (company.cash < MOLD_TRANSFER_COST) return { ok: false, reason: 'Trésorerie insuffisante pour le transport' };
+  company.cash -= MOLD_TRANSFER_COST;
+  return { ok: true };
+}
+
 export function takeLoan(company: Company, amount: number): void {
   const loan: Loan = {
     id: `loan_${Date.now()}_${Math.round(Math.random() * 1000)}`,
