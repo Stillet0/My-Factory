@@ -9,6 +9,8 @@ export interface PressTemplate {
   maxInjectionRateCm3s: number;
   energyKw: number;
   upkeepPerDay: number;
+  /** If set, this template only appears for purchase once the tech is researched. */
+  requiresTechId?: string;
 }
 
 export interface ProcessParams {
@@ -35,6 +37,8 @@ export interface Press {
   totalDefects: number;
   totalGood: number;
   faultReason: string | null;
+  /** Robotized presses skip the operator/shift gate (at a small quality tradeoff). */
+  automated: boolean;
 }
 
 export function defaultParamsFor(): ProcessParams {
@@ -57,6 +61,7 @@ export function createPress(id: string, templateId: string): Press {
     totalDefects: 0,
     totalGood: 0,
     faultReason: null,
+    automated: false,
   };
 }
 

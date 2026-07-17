@@ -1,5 +1,5 @@
 import { useGameStore } from '../../store/gameStore';
-import { getMoldTemplate } from '../../data/molds';
+import { getMoldFamily } from '../../data/moldFamilies';
 import { DAY_LENGTH_MS } from '../../sim/clock';
 import { formatCurrency, formatPercent } from '../format';
 
@@ -16,7 +16,7 @@ export function ContractsPanel() {
       <h3>Offres disponibles</h3>
       <ul className="contract-list">
         {factory.availableContracts.map((c) => {
-          const part = getMoldTemplate(c.moldTemplateId);
+          const part = getMoldFamily(c.familyId);
           const daysLeft = Math.max(0, Math.round((c.deadlineMs - clock.simTimeMs) / DAY_LENGTH_MS));
           return (
             <li key={c.id} className="contract-card">
@@ -40,7 +40,7 @@ export function ContractsPanel() {
       <h3>Contrats en cours</h3>
       <ul className="contract-list">
         {factory.activeContracts.map((c) => {
-          const part = getMoldTemplate(c.moldTemplateId);
+          const part = getMoldFamily(c.familyId);
           const progress = c.quantity > 0 ? c.producedGood / c.quantity : 0;
           const daysLeft = ((c.deadlineMs - clock.simTimeMs) / DAY_LENGTH_MS).toFixed(1);
           return (

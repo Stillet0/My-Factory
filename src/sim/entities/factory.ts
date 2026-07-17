@@ -6,8 +6,14 @@ import type { Contract } from './contract';
 export interface FactoryEvent {
   id: string;
   atMs: number;
-  kind: 'breakdown' | 'contract_won' | 'contract_delivered' | 'contract_failed' | 'quit' | 'hired' | 'info';
+  kind: 'breakdown' | 'contract_won' | 'contract_delivered' | 'contract_failed' | 'quit' | 'hired' | 'info' | 'contract_lost';
   message: string;
+}
+
+export interface MoldInProgress {
+  id: string;
+  templateId: string;
+  readyOnDay: number;
 }
 
 export interface Factory {
@@ -15,6 +21,7 @@ export interface Factory {
   name: string;
   presses: Press[];
   molds: Mold[];
+  moldsInProgress: MoldInProgress[];
   employees: Employee[];
   /** Raw material stock in kg, keyed by material id. */
   materialStockKg: Record<string, number>;
@@ -36,6 +43,7 @@ export function createFactory(id: string, name: string): Factory {
     name,
     presses: [],
     molds: [],
+    moldsInProgress: [],
     employees: [],
     materialStockKg: {},
     activeContracts: [],

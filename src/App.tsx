@@ -5,11 +5,13 @@ import { ContractsPanel } from './ui/panels/ContractsPanel';
 import { MachineTuningPanel } from './ui/panels/MachineTuningPanel';
 import { HRPanel } from './ui/panels/HRPanel';
 import { FinancePanel } from './ui/panels/FinancePanel';
+import { MoldDesignPanel } from './ui/panels/MoldDesignPanel';
+import { ResearchPanel } from './ui/panels/ResearchPanel';
 import { useGameStore } from './store/gameStore';
 import type { SimSpeed } from './sim/clock';
 import { formatCurrency, formatDay } from './ui/format';
 
-type Tab = 'dashboard' | 'contracts' | 'machines' | 'hr' | 'finance';
+type Tab = 'dashboard' | 'contracts' | 'machines' | 'hr' | 'finance' | 'design' | 'research';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'dashboard', label: 'Vue d’ensemble' },
@@ -17,6 +19,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'machines', label: 'Presses' },
   { id: 'hr', label: 'RH' },
   { id: 'finance', label: 'Finances' },
+  { id: 'design', label: 'Bureau d’étude' },
+  { id: 'research', label: 'R&D' },
 ];
 
 const SPEEDS: SimSpeed[] = [0, 1, 2, 4];
@@ -78,6 +82,8 @@ function App() {
             {tab === 'machines' && <MachineTuningPanel />}
             {tab === 'hr' && <HRPanel />}
             {tab === 'finance' && <FinancePanel />}
+            {tab === 'design' && <MoldDesignPanel />}
+            {tab === 'research' && <ResearchPanel />}
           </div>
         </aside>
       </div>

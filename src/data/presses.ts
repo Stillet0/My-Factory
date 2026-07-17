@@ -28,6 +28,16 @@ export const PRESSES: PressTemplate[] = [
     energyKw: 28,
     upkeepPerDay: 34,
   },
+  {
+    id: 'press_400t',
+    name: 'Presse 400T',
+    tonnage: 400,
+    costBase: 95000,
+    maxInjectionRateCm3s: 160,
+    energyKw: 38,
+    upkeepPerDay: 48,
+    requiresTechId: 'press_400t',
+  },
 ];
 
 export function getPressTemplate(id: string): PressTemplate {

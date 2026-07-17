@@ -3,8 +3,9 @@ import { createCompany } from '../entities/company';
 import { createFactory } from '../entities/factory';
 import { createPress } from '../entities/press';
 import { createEmployee } from '../entities/employee';
-import { purchasePress, dailyFinanceUpdate, buyMaterial, takeLoan } from './financeSystem';
+import { purchasePress, dailyFinanceUpdate, buyMaterial, takeLoan, designMold, startResearch } from './financeSystem';
 import { getMaterial } from '../../data/materials';
+import { getMoldFamily } from '../../data/moldFamilies';
 
 describe('financeSystem', () => {
   it('purchasePress rejects when cash is insufficient', () => {
@@ -60,5 +61,69 @@ describe('financeSystem', () => {
     expect(company.cash).toBe(before + 5000);
     expect(company.loans).toHaveLength(1);
     expect(company.loans[0].remaining).toBe(5000);
+  });
+
+  describe('designMold', () => {
+    const cap = getMoldFamily('cap');
+
+    it('rejects an invalid cavity count', () => {
+      const company = createCompany();
+      const result = designMold(company, cap, 3, 'standard', ['pp']);
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects an empty material selection', () => {
+      const company = createCompany();
+      const result = designMold(company, cap, cap.baseCavities, 'standard', []);
+      expect(result.ok).toBe(false);
+    });
+
+    it('rejects insufficient cash', () => {
+      const company = createCompany();
+      company.cash = 10;
+      const result = designMold(company, cap, cap.baseCavities, 'standard', ['pp']);
+      expect(result.ok).toBe(false);
+    });
+
+    it('on success deducts cash and registers a custom template with the right familyId/cavities', () => {
+      const company = createCompany();
+      company.cash = 50000;
+      const result = designMold(company, cap, cap.baseCavities, 'standard', ['pp']);
+      expect(result.ok).toBe(true);
+      expect(company.cash).toBeLessThan(50000);
+      expect(company.customMoldTemplates).toHaveLength(1);
+      expect(company.customMoldTemplates[0].familyId).toBe('cap');
+      expect(company.customMoldTemplates[0].cavities).toBe(cap.baseCavities);
+    });
+  });
+
+  describe('startResearch', () => {
+    it('rejects insufficient cash', () => {
+      const company = createCompany();
+      company.cash = 10;
+      expect(startResearch(company, 'material_pa66').ok).toBe(false);
+    });
+
+    it('rejects when a prerequisite is missing', () => {
+      const company = createCompany();
+      company.cash = 100000;
+      expect(startResearch(company, 'quality_iatf').ok).toBe(false);
+    });
+
+    it('rejects when a research is already in progress', () => {
+      const company = createCompany();
+      company.cash = 100000;
+      expect(startResearch(company, 'material_pa66').ok).toBe(true);
+      expect(startResearch(company, 'material_tpe').ok).toBe(false);
+    });
+
+    it('on success deducts cost and sets researchInProgress', () => {
+      const company = createCompany();
+      company.cash = 100000;
+      const result = startResearch(company, 'material_pa66');
+      expect(result.ok).toBe(true);
+      expect(company.cash).toBe(100000 - 30000);
+      expect(company.researchInProgress).toEqual({ techId: 'material_pa66', daysRemaining: 8 });
+    });
   });
 });

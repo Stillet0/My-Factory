@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { getPressTemplate } from '../../data/presses';
-import { getMoldTemplate } from '../../data/molds';
+import { resolveMoldTemplate } from '../../data/molds';
 import { getMaterial, MATERIALS } from '../../data/materials';
 import type { ProcessRange } from '../../sim/entities/material';
 import type { ProcessParams } from '../../sim/entities/press';
+import type { Company } from '../../sim/entities/company';
 import { requiredTonnage } from '../../sim/entities/mold';
 import { repairCost, preventiveCost } from '../../sim/systems/maintenanceSystem';
+import { AUTOMATION_UPGRADE_COST } from '../../sim/systems/financeSystem';
 import { formatCurrency, formatPercent, PRESS_STATE_LABELS } from '../format';
 
 function ParamSlider({
@@ -34,7 +36,7 @@ function ParamSlider({
 
 export function MachineTuningPanel() {
   useGameStore((s) => s.tickCount);
-  const { company, selectedFactoryId, assignPress, setPressParams, repairPress, maintainPress } = useGameStore.getState();
+  const { company, selectedFactoryId, assignPress, setPressParams, repairPress, maintainPress, automatePress } = useGameStore.getState();
   const factory = company.factories.find((f) => f.id === selectedFactoryId);
   const [selectedPressId, setSelectedPressId] = useState<string | null>(null);
 
@@ -84,6 +86,19 @@ export function MachineTuningPanel() {
             </div>
           )}
 
+          <div className="machine-detail__status">
+            {press.automated ? (
+              <span className="param-slider__value--ok">Automatisée (fonctionne sans opérateur)</span>
+            ) : (
+              <button
+                disabled={!company.researchedTechIds.includes('automation_1') || company.cash < AUTOMATION_UPGRADE_COST}
+                onClick={() => automatePress(factory.id, press.id)}
+              >
+                Automatiser ({formatCurrency(AUTOMATION_UPGRADE_COST)})
+              </button>
+            )}
+          </div>
+
           <div className="assign-grid">
             <label>
               Moule
@@ -93,7 +108,7 @@ export function MachineTuningPanel() {
               >
                 <option value="">— Aucun —</option>
                 {factory.molds.map((m) => (
-                  <option key={m.id} value={m.id}>{getMoldTemplate(m.templateId).partName} (usure {formatPercent(m.wear)})</option>
+                  <option key={m.id} value={m.id}>{resolveMoldTemplate(company, m.templateId).partName} (usure {formatPercent(m.wear)})</option>
                 ))}
               </select>
             </label>
@@ -105,7 +120,7 @@ export function MachineTuningPanel() {
                 onChange={(e) => assignPress(factory.id, press.id, { materialId: e.target.value || null })}
               >
                 <option value="">— Aucune —</option>
-                {MATERIALS.map((mat) => (
+                {MATERIALS.filter((mat) => !mat.requiresTechId || company.researchedTechIds.includes(mat.requiresTechId)).map((mat) => (
                   <option key={mat.id} value={mat.id}>
                     {mat.name} ({(factory.materialStockKg[mat.id] ?? 0).toFixed(0)} kg en stock)
                   </option>
@@ -141,7 +156,7 @@ export function MachineTuningPanel() {
           </div>
 
           {press.moldId && (
-            <ClampWarning pressTemplateId={press.templateId} moldTemplateId={factory.molds.find((m) => m.id === press.moldId)?.templateId} />
+            <ClampWarning company={company} pressTemplateId={press.templateId} moldTemplateId={factory.molds.find((m) => m.id === press.moldId)?.templateId} />
           )}
 
           {press.materialId ? (
@@ -159,10 +174,10 @@ export function MachineTuningPanel() {
   );
 }
 
-function ClampWarning({ pressTemplateId, moldTemplateId }: { pressTemplateId: string; moldTemplateId?: string }) {
+function ClampWarning({ company, pressTemplateId, moldTemplateId }: { company: Company; pressTemplateId: string; moldTemplateId?: string }) {
   if (!moldTemplateId) return null;
   const pressTemplate = getPressTemplate(pressTemplateId);
-  const moldTemplate = getMoldTemplate(moldTemplateId);
+  const moldTemplate = resolveMoldTemplate(company, moldTemplateId);
   const required = requiredTonnage(moldTemplate);
   if (required > pressTemplate.tonnage) {
     return (

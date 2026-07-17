@@ -29,6 +29,18 @@ describe('maintenanceSystem', () => {
     expect(mold.wear).toBeGreaterThan(0);
   });
 
+  it('applyCycleWear scales mold wear growth by moldWearRateMult', () => {
+    const pressA = createPress('p1', 'press_60t');
+    const moldA = createMold('mold_cap', 'm1');
+    applyCycleWear(pressA, moldA, 0.5, 1);
+
+    const pressB = createPress('p2', 'press_60t');
+    const moldB = createMold('mold_cap', 'm2');
+    applyCycleWear(pressB, moldB, 0.5, 0.5);
+
+    expect(moldB.wear).toBeCloseTo(moldA.wear / 2);
+  });
+
   it('performRepair resets wear and clears the fault state', () => {
     const press = createPress('p1', 'press_60t');
     press.wear = 0.8;

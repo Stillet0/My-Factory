@@ -28,6 +28,8 @@ export interface Material {
   costPerKg: number;
   /** Density, g/cm3, used to convert part volume to shot weight. */
   density: number;
+  /** If set, this material only appears for purchase/assignment once the tech is researched. */
+  requiresTechId?: string;
 }
 
 /** Returns 0 if v is inside the ideal window, rising to 1 at/after the

@@ -1,7 +1,8 @@
 export interface ClientArchetype {
   id: string;
   name: string;
-  moldTemplateId: string;
+  /** MoldFamily id (data/moldFamilies.ts) — any mold of this family fulfills the contract. */
+  familyId: string;
   qtyMin: number;
   qtyMax: number;
   /** Price multiplier applied to the mold's sellPricePerUnitBase. */
@@ -18,7 +19,7 @@ export const CLIENT_ARCHETYPES: ClientArchetype[] = [
   {
     id: 'cl_bottler',
     name: 'Embouteilleur régional',
-    moldTemplateId: 'mold_cap',
+    familyId: 'cap',
     qtyMin: 5000,
     qtyMax: 20000,
     priceMultMin: 0.9,
@@ -31,7 +32,7 @@ export const CLIENT_ARCHETYPES: ClientArchetype[] = [
   {
     id: 'cl_homegoods',
     name: 'Distributeur d’articles ménagers',
-    moldTemplateId: 'mold_lid',
+    familyId: 'lid',
     qtyMin: 2000,
     qtyMax: 8000,
     priceMultMin: 0.95,
@@ -44,7 +45,7 @@ export const CLIENT_ARCHETYPES: ClientArchetype[] = [
   {
     id: 'cl_electronics',
     name: 'Fabricant électronique',
-    moldTemplateId: 'mold_housing',
+    familyId: 'housing',
     qtyMin: 500,
     qtyMax: 2500,
     priceMultMin: 1.0,
@@ -57,7 +58,7 @@ export const CLIENT_ARCHETYPES: ClientArchetype[] = [
   {
     id: 'cl_toys',
     name: 'Marque de jouets',
-    moldTemplateId: 'mold_toy',
+    familyId: 'toy',
     qtyMin: 1000,
     qtyMax: 6000,
     priceMultMin: 0.9,

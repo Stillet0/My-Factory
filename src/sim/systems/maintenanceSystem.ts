@@ -3,10 +3,10 @@ import type { Mold } from '../entities/mold';
 
 /** Wear added to a press/mold per completed cycle; harsher process conditions
  * (tracked via rejectProbability, passed in by the caller) accelerate wear. */
-export function applyCycleWear(press: Press, mold: Mold, rejectProbability: number): void {
+export function applyCycleWear(press: Press, mold: Mold, rejectProbability: number, moldWearRateMult = 1): void {
   const stress = 1 + rejectProbability * 0.8;
   press.wear = Math.min(1, press.wear + 0.0015 * stress);
-  mold.wear = Math.min(1, mold.wear + 0.0022 * stress);
+  mold.wear = Math.min(1, mold.wear + 0.0022 * stress * moldWearRateMult);
 }
 
 /** Probability this press breaks down (enters 'fault') after completing a cycle. */

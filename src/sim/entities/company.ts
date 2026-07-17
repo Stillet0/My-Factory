@@ -1,4 +1,5 @@
 import type { Factory } from './factory';
+import type { MoldTemplate } from './mold';
 
 export interface Loan {
   id: string;
@@ -25,6 +26,11 @@ export interface Company {
   materialPriceMultipliers: Record<string, number>;
   /** Revenue collected since the last daily finance settlement, reset each day. */
   dayRevenueAccumulator: number;
+  /** Mold blueprints the player has designed in the bureau d'étude (Phase 2). */
+  customMoldTemplates: MoldTemplate[];
+  /** Single active R&D slot — one research at a time. */
+  researchInProgress: { techId: string; daysRemaining: number } | null;
+  researchedTechIds: string[];
 }
 
 export function createCompany(): Company {
@@ -36,5 +42,8 @@ export function createCompany(): Company {
     history: [],
     materialPriceMultipliers: {},
     dayRevenueAccumulator: 0,
+    customMoldTemplates: [],
+    researchInProgress: null,
+    researchedTechIds: [],
   };
 }

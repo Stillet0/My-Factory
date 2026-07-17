@@ -3,7 +3,8 @@ export type ContractStatus = 'offered' | 'active' | 'completed' | 'failed';
 export interface Contract {
   id: string;
   clientName: string;
-  moldTemplateId: string;
+  /** MoldFamily id — fulfillable by any mold (catalog or custom) of this family. */
+  familyId: string;
   quantity: number;
   producedGood: number;
   producedReject: number;

@@ -30,3 +30,15 @@ export const SHIFT_LABELS: Record<string, string> = {
   evening: 'Après-midi (14h-22h)',
   night: 'Nuit (22h-6h)',
 };
+
+export const TECH_CATEGORY_LABELS: Record<string, string> = {
+  presses: 'Presses',
+  automation: 'Automatisation',
+  materials: 'Matières',
+  quality: 'Qualité',
+};
+
+export const TOOLING_TIER_LABELS: Record<string, string> = {
+  standard: 'Standard',
+  precision: 'Précision',
+};

@@ -50,7 +50,7 @@ export function FinancePanel() {
 
       <h3>Acheter une presse</h3>
       <ul className="shop-list">
-        {PRESSES.map((p) => (
+        {PRESSES.filter((p) => !p.requiresTechId || company.researchedTechIds.includes(p.requiresTechId)).map((p) => (
           <li key={p.id} className="shop-item">
             <span>{p.name} ({p.tonnage} T)</span>
             <button disabled={company.cash < p.costBase} onClick={() => buyPress(factory.id, p.id)}>
@@ -64,7 +64,7 @@ export function FinancePanel() {
       <ul className="shop-list">
         {MOLD_TEMPLATES.map((m) => (
           <li key={m.id} className="shop-item">
-            <span>{m.partName} ({m.cavities} empr.) — {m.buildTimeDaysBase} j</span>
+            <span>{m.partName} ({m.cavities} empr.) — construction {m.buildTimeDaysBase} j</span>
             <button disabled={company.cash < m.buildCostBase} onClick={() => buyMold(factory.id, m.id)}>
               {formatCurrency(m.buildCostBase)}
             </button>
@@ -74,7 +74,7 @@ export function FinancePanel() {
 
       <h3>Acheter de la matière première</h3>
       <ul className="shop-list">
-        {MATERIALS.map((mat) => {
+        {MATERIALS.filter((mat) => !mat.requiresTechId || company.researchedTechIds.includes(mat.requiresTechId)).map((mat) => {
           const mult = company.materialPriceMultipliers[mat.id] ?? 1;
           const qty = materialQty[mat.id] ?? 100;
           const cost = qty * mat.costPerKg * mult;

@@ -4,6 +4,11 @@ import { pushEvent } from '../entities/factory';
 import { isComplete } from '../entities/contract';
 import { getPressTemplate } from '../../data/presses';
 import { getMoldTemplate } from '../../data/molds';
+import type { MoldTemplate } from '../entities/mold';
+import { nextCustomMoldTemplateId } from '../entities/mold';
+import type { MoldFamily, ToolingTier } from '../../data/moldFamilies';
+import { computeCustomMoldStats } from '../formulas/moldDesign';
+import { getTechNode } from '../../data/techtree';
 
 /** Settles contracts that are finished or past their deadline. Runs every tick
  * so deliveries/failures happen as soon as they occur, not just at day end. */
@@ -80,6 +85,59 @@ export function buyMaterial(company: Company, factory: Factory, materialId: stri
   if (company.cash < cost) return { ok: false, reason: 'Trésorerie insuffisante' };
   company.cash -= cost;
   factory.materialStockKg[materialId] = (factory.materialStockKg[materialId] ?? 0) + kg;
+  return { ok: true };
+}
+
+export const AUTOMATION_UPGRADE_COST = 8000;
+
+/** Deducts cash and creates the mold *blueprint* immediately — the physical
+ * mold itself is queued by the caller (see sim/systems/moldSystem.ts) and only
+ * materializes once its build time elapses. */
+export function designMold(
+  company: Company,
+  family: MoldFamily,
+  cavities: number,
+  tier: ToolingTier,
+  materialIds: string[],
+): { ok: boolean; reason?: string; template?: MoldTemplate } {
+  if (!family.allowedCavities.includes(cavities)) {
+    return { ok: false, reason: 'Nombre d’empreintes non disponible pour cette famille' };
+  }
+  const chosenMaterials = materialIds.filter((id) => family.compatibleMaterialIds.includes(id));
+  if (chosenMaterials.length === 0) {
+    return { ok: false, reason: 'Sélectionnez au moins une matière compatible' };
+  }
+  const stats = computeCustomMoldStats(family, cavities, tier);
+  if (company.cash < stats.buildCostBase) return { ok: false, reason: 'Trésorerie insuffisante' };
+  company.cash -= stats.buildCostBase;
+
+  const template: MoldTemplate = {
+    id: nextCustomMoldTemplateId(),
+    familyId: family.id,
+    partName: `${family.partName} (design ${tier === 'precision' ? 'précision' : 'standard'}, ${cavities} emp.)`,
+    compatibleMaterialIds: chosenMaterials,
+    cavities,
+    partVolumeCm3: family.partVolumeCm3,
+    projectedAreaCm2: family.projectedAreaCm2,
+    complexityFactor: stats.complexityFactor,
+    wearRateMult: stats.wearRateMult,
+    buildCostBase: stats.buildCostBase,
+    buildTimeDaysBase: stats.buildTimeDaysBase,
+    sellPricePerUnitBase: family.sellPricePerUnitBase,
+  };
+  company.customMoldTemplates.push(template);
+  return { ok: true, template };
+}
+
+export function startResearch(company: Company, techId: string): { ok: boolean; reason?: string } {
+  const node = getTechNode(techId);
+  if (company.researchedTechIds.includes(techId)) return { ok: false, reason: 'Déjà recherché' };
+  if (company.researchInProgress) return { ok: false, reason: 'Une recherche est déjà en cours' };
+  const missingPrereq = node.prerequisiteIds.find((id) => !company.researchedTechIds.includes(id));
+  if (missingPrereq) return { ok: false, reason: 'Prérequis manquant' };
+  if (company.cash < node.cost) return { ok: false, reason: 'Trésorerie insuffisante' };
+  company.cash -= node.cost;
+  company.researchInProgress = { techId, daysRemaining: node.researchDays };
   return { ok: true };
 }
 

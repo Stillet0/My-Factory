@@ -1,8 +1,9 @@
+import type { Company } from '../entities/company';
 import type { Factory } from '../entities/factory';
 import { pushEvent } from '../entities/factory';
 import { CLAMP_MS, EJECT_MS, type Press } from '../entities/press';
 import { getPressTemplate } from '../../data/presses';
-import { getMoldTemplate } from '../../data/molds';
+import { resolveMoldTemplate } from '../../data/molds';
 import { getMaterial } from '../../data/materials';
 import { requiredTonnage, type Mold } from '../entities/mold';
 import { isOnShiftNow } from '../entities/employee';
@@ -12,28 +13,31 @@ import { applyCycleWear, rollBreakdown } from './maintenanceSystem';
 import { isComplete } from '../entities/contract';
 
 /** Advances every press in the factory by one fixed tick. */
-export function tickProduction(factory: Factory, tickMs: number, simTimeMs: number, hourOfDay: number): void {
+export function tickProduction(company: Company, factory: Factory, tickMs: number, simTimeMs: number, hourOfDay: number): void {
   for (const press of factory.presses) {
     if (press.state === 'fault') continue;
     if (press.state === 'idle') {
-      tryStartCycle(factory, press, hourOfDay);
+      tryStartCycle(company, factory, press, hourOfDay);
       continue;
     }
     press.stateTimeRemainingMs -= tickMs;
     if (press.stateTimeRemainingMs > 0) continue;
-    advanceState(factory, press, simTimeMs);
+    advanceState(company, factory, press, simTimeMs);
   }
 }
 
-function tryStartCycle(factory: Factory, press: Press, hourOfDay: number): void {
-  if (!press.moldId || !press.materialId || !press.operatorId || !press.contractId) return;
-  const operator = factory.employees.find((e) => e.id === press.operatorId);
-  if (!operator || !isOnShiftNow(operator.shift, hourOfDay)) return;
+function tryStartCycle(company: Company, factory: Factory, press: Press, hourOfDay: number): void {
+  if (!press.moldId || !press.materialId || !press.contractId) return;
+  if (!press.automated) {
+    if (!press.operatorId) return;
+    const operator = factory.employees.find((e) => e.id === press.operatorId);
+    if (!operator || !isOnShiftNow(operator.shift, hourOfDay)) return;
+  }
   const mold = factory.molds.find((m) => m.id === press.moldId);
   const contract = factory.activeContracts.find((c) => c.id === press.contractId);
   if (!mold || !contract || isComplete(contract)) return;
-  const template = getMoldTemplate(mold.templateId);
-  if (template.id !== contract.moldTemplateId) return;
+  const template = resolveMoldTemplate(company, mold.templateId);
+  if (template.familyId !== contract.familyId) return;
 
   const shotVolumeCm3 = template.partVolumeCm3 * template.cavities;
   const material = getMaterial(press.materialId);
@@ -46,13 +50,13 @@ function tryStartCycle(factory: Factory, press: Press, hourOfDay: number): void 
   press.stateTimeRemainingMs = CLAMP_MS;
 }
 
-function advanceState(factory: Factory, press: Press, simTimeMs: number): void {
+function advanceState(company: Company, factory: Factory, press: Press, simTimeMs: number): void {
   const mold = factory.molds.find((m) => m.id === press.moldId);
   if (!mold) {
     press.state = 'idle';
     return;
   }
-  const template = getMoldTemplate(mold.templateId);
+  const template = resolveMoldTemplate(company, mold.templateId);
   const pressTemplate = getPressTemplate(press.templateId);
 
   switch (press.state) {
@@ -74,7 +78,7 @@ function advanceState(factory: Factory, press: Press, simTimeMs: number): void {
       break;
     }
     case 'ejecting': {
-      completeCycle(factory, press, mold, simTimeMs);
+      completeCycle(company, factory, press, mold, simTimeMs);
       press.state = 'idle';
       press.stateTimeRemainingMs = 0;
       break;
@@ -82,14 +86,15 @@ function advanceState(factory: Factory, press: Press, simTimeMs: number): void {
   }
 }
 
-function completeCycle(factory: Factory, press: Press, mold: Mold, simTimeMs: number): void {
-  const template = getMoldTemplate(mold.templateId);
+function completeCycle(company: Company, factory: Factory, press: Press, mold: Mold, simTimeMs: number): void {
+  const template = resolveMoldTemplate(company, mold.templateId);
   const material = getMaterial(press.materialId!);
   const pressTemplate = getPressTemplate(press.templateId);
   const clampMarginRatio = (pressTemplate.tonnage - requiredTonnage(template)) / pressTemplate.tonnage;
 
   const quality = computeQuality(press.params, material, mold.wear, clampMarginRatio);
-  const outcome = rollShotOutcome(quality, template.cavities);
+  const effectiveRejectProbability = applyAutomationPenalty(quality.rejectProbability, press.automated);
+  const outcome = rollShotOutcome({ ...quality, rejectProbability: effectiveRejectProbability }, template.cavities);
 
   press.cyclesRun++;
   press.totalGood += outcome.good;
@@ -101,10 +106,18 @@ function completeCycle(factory: Factory, press: Press, mold: Mold, simTimeMs: nu
     contract.producedReject += outcome.reject;
   }
 
-  applyCycleWear(press, mold, quality.rejectProbability);
+  applyCycleWear(press, mold, effectiveRejectProbability, template.wearRateMult);
   if (rollBreakdown(press)) {
     press.state = 'fault';
     press.faultReason = 'Panne mécanique — la presse nécessite une réparation.';
     pushEvent(factory, simTimeMs, 'breakdown', `${pressTemplate.name} en panne (usure élevée).`);
   }
+}
+
+/** Automation removes real-time human oversight of process drift that tuned-
+ * once parameters can't fully replace — a small flat penalty represents this,
+ * so automating is a genuine tradeoff (frees an operator to reassign/hire
+ * elsewhere) rather than a strict quality upgrade. */
+export function applyAutomationPenalty(rejectProbability: number, automated: boolean): number {
+  return automated ? Math.min(1, rejectProbability + 0.03) : rejectProbability;
 }

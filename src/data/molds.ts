@@ -1,50 +1,59 @@
 import type { MoldTemplate } from '../sim/entities/mold';
+import type { Company } from '../sim/entities/company';
 
 export const MOLD_TEMPLATES: MoldTemplate[] = [
   {
     id: 'mold_cap',
+    familyId: 'cap',
     partName: 'Bouchon',
     compatibleMaterialIds: ['pp', 'abs'],
     cavities: 4,
     partVolumeCm3: 6,
     projectedAreaCm2: 5,
     complexityFactor: 0.75,
+    wearRateMult: 1,
     buildCostBase: 9000,
     buildTimeDaysBase: 4,
     sellPricePerUnitBase: 0.18,
   },
   {
     id: 'mold_lid',
+    familyId: 'lid',
     partName: 'Couvercle',
     compatibleMaterialIds: ['pp', 'abs'],
     cavities: 2,
     partVolumeCm3: 22,
     projectedAreaCm2: 20,
     complexityFactor: 1.0,
+    wearRateMult: 1,
     buildCostBase: 14000,
     buildTimeDaysBase: 6,
     sellPricePerUnitBase: 0.42,
   },
   {
     id: 'mold_housing',
+    familyId: 'housing',
     partName: 'Boîtier électronique',
     compatibleMaterialIds: ['abs', 'pc'],
     cavities: 1,
     partVolumeCm3: 58,
     projectedAreaCm2: 45,
     complexityFactor: 1.35,
+    wearRateMult: 1,
     buildCostBase: 24000,
     buildTimeDaysBase: 9,
     sellPricePerUnitBase: 1.85,
   },
   {
     id: 'mold_toy',
+    familyId: 'toy',
     partName: 'Figurine jouet',
     compatibleMaterialIds: ['pp', 'abs'],
     cavities: 4,
     partVolumeCm3: 14,
     projectedAreaCm2: 12,
     complexityFactor: 1.1,
+    wearRateMult: 1,
     buildCostBase: 16000,
     buildTimeDaysBase: 7,
     sellPricePerUnitBase: 0.55,
@@ -55,4 +64,11 @@ export function getMoldTemplate(id: string): MoldTemplate {
   const t = MOLD_TEMPLATES.find((m) => m.id === id);
   if (!t) throw new Error(`Unknown mold template ${id}`);
   return t;
+}
+
+/** Resolves a Mold instance's template, checking player-designed custom
+ * templates first, then falling back to the fixed catalog. */
+export function resolveMoldTemplate(company: Company, id: string): MoldTemplate {
+  const custom = company.customMoldTemplates.find((t) => t.id === id);
+  return custom ?? getMoldTemplate(id);
 }

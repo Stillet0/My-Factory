@@ -8,16 +8,39 @@ import { createEmployee, type EmployeeRole, type Shift } from '../sim/entities/e
 import { tickProduction } from '../sim/systems/productionSystem';
 import { tickFatigue, dailyHrUpdate } from '../sim/systems/hrSystem';
 import { dailyMarketUpdate } from '../sim/systems/marketSystem';
-import { settleContracts, dailyFinanceUpdate, purchasePress, buildMold as buildMoldFinance, buyMaterial as buyMaterialFinance, takeLoan as takeLoanFinance, } from '../sim/systems/financeSystem';
+import {
+  settleContracts,
+  dailyFinanceUpdate,
+  purchasePress,
+  buildMold as buildMoldFinance,
+  buyMaterial as buyMaterialFinance,
+  takeLoan as takeLoanFinance,
+  designMold as designMoldFinance,
+  startResearch as startResearchFinance,
+  AUTOMATION_UPGRADE_COST,
+} from '../sim/systems/financeSystem';
 import { repairCost, preventiveCost, performRepair, performPreventiveMaintenance } from '../sim/systems/maintenanceSystem';
+import { dailyMoldUpdate } from '../sim/systems/moldSystem';
+import { dailyResearchUpdate } from '../sim/systems/researchSystem';
 import { getMaterial, MATERIALS } from '../data/materials';
 import { getMoldTemplate } from '../data/molds';
+import { getMoldFamily, type MoldDesignSpec } from '../data/moldFamilies';
+import { getPressTemplate } from '../data/presses';
 import { saveGame, loadGame, hasSave } from '../save/saveManager';
 
 let pressSeq = 0;
 let moldSeq = 0;
+let moldQueueSeq = 0;
 function nextPressId(): string { pressSeq++; return `press_${pressSeq}`; }
 function nextMoldId(): string { moldSeq++; return `moldinst_${moldSeq}`; }
+function nextMoldQueueId(): string { moldQueueSeq++; return `moldq_${moldQueueSeq}`; }
+
+const LEGACY_MOLD_TO_FAMILY: Record<string, string> = {
+  mold_cap: 'cap',
+  mold_lid: 'lid',
+  mold_housing: 'housing',
+  mold_toy: 'toy',
+};
 
 function buildInitialFactory(): Factory {
   const factory = createFactory('factory_1', 'Usine n°1');
@@ -62,8 +85,12 @@ interface GameStore {
 
   buyPress: (factoryId: string, templateId: string) => void;
   buyMold: (factoryId: string, templateId: string) => void;
+  designMold: (factoryId: string, spec: MoldDesignSpec) => void;
   buyMaterial: (factoryId: string, materialId: string, kg: number) => void;
   takeLoan: (amount: number) => void;
+
+  startResearch: (techId: string) => void;
+  automatePress: (factoryId: string, pressId: string) => void;
 
   saveGame: () => void;
   loadGame: () => void;
@@ -94,15 +121,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
       dirty = true;
       const hourOfDay = (clock.simTimeMs % DAY_LENGTH_MS) / DAY_LENGTH_MS * 24;
       for (const factory of company.factories) {
-        tickProduction(factory, tickMs, clock.simTimeMs, hourOfDay);
+        tickProduction(company, factory, tickMs, clock.simTimeMs, hourOfDay);
         tickFatigue(factory, tickMs, hourOfDay);
         settleContracts(company, factory, clock.simTimeMs);
       }
       if (clock.day > lastProcessedDay) {
         lastProcessedDay = clock.day;
+        const primaryFactory = company.factories[0];
+        if (primaryFactory) dailyResearchUpdate(company, primaryFactory, clock.simTimeMs);
         for (const factory of company.factories) {
           dailyHrUpdate(factory, clock.simTimeMs);
           dailyMarketUpdate(company, factory, clock.simTimeMs);
+          dailyMoldUpdate(company, factory, clock.day, clock.simTimeMs, nextMoldId);
           dailyFinanceUpdate(company, factory, clock.day);
         }
       }
@@ -201,12 +231,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   buyMold: (factoryId, templateId) => {
-    const { company } = get();
+    const { company, clock } = get();
     const factory = findFactory(company, factoryId);
-    getMoldTemplate(templateId);
+    const template = getMoldTemplate(templateId);
     const result = buildMoldFinance(company, templateId);
     if (!result.ok) return;
-    factory.molds.push(createMold(templateId, nextMoldId()));
+    factory.moldsInProgress.push({ id: nextMoldQueueId(), templateId, readyOnDay: clock.day + template.buildTimeDaysBase });
+    pushEvent(factory, clock.simTimeMs, 'info', `Fabrication du moule ${template.partName} lancée (${template.buildTimeDaysBase} j).`);
+    set({ tickCount: get().tickCount + 1 });
+  },
+
+  designMold: (factoryId, spec) => {
+    const { company, clock } = get();
+    const factory = findFactory(company, factoryId);
+    const family = getMoldFamily(spec.familyId);
+    const result = designMoldFinance(company, family, spec.cavities, spec.tier, spec.materialIds);
+    if (!result.ok || !result.template) return;
+    factory.moldsInProgress.push({ id: nextMoldQueueId(), templateId: result.template.id, readyOnDay: clock.day + result.template.buildTimeDaysBase });
+    pushEvent(factory, clock.simTimeMs, 'info', `Conception « ${result.template.partName} » lancée (${result.template.buildTimeDaysBase} j).`);
     set({ tickCount: get().tickCount + 1 });
   },
 
@@ -224,6 +266,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ tickCount: get().tickCount + 1 });
   },
 
+  startResearch: (techId) => {
+    const { company } = get();
+    const result = startResearchFinance(company, techId);
+    if (!result.ok) return;
+    set({ tickCount: get().tickCount + 1 });
+  },
+
+  automatePress: (factoryId, pressId) => {
+    const { company, clock } = get();
+    const factory = findFactory(company, factoryId);
+    const press = factory.presses.find((p) => p.id === pressId);
+    if (!press || press.automated) return;
+    if (!company.researchedTechIds.includes('automation_1')) return;
+    if (company.cash < AUTOMATION_UPGRADE_COST) return;
+    company.cash -= AUTOMATION_UPGRADE_COST;
+    press.automated = true;
+    pushEvent(factory, clock.simTimeMs, 'info', `${getPressTemplate(press.templateId).name} automatisée.`);
+    set({ tickCount: get().tickCount + 1 });
+  },
+
   saveGame: () => {
     const { clock, company } = get();
     saveGame(clock, company);
@@ -232,8 +294,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
   loadGame: () => {
     const data = loadGame();
     if (!data) return;
+    const { company } = data;
+    company.customMoldTemplates ??= [];
+    company.researchedTechIds ??= [];
+    company.researchInProgress ??= null;
+    for (const factory of company.factories) {
+      factory.moldsInProgress ??= [];
+      for (const press of factory.presses) press.automated ??= false;
+      for (const contract of [...factory.activeContracts, ...factory.availableContracts]) {
+        const legacy = contract as unknown as { familyId?: string; moldTemplateId?: string };
+        if (legacy.familyId === undefined && legacy.moldTemplateId) {
+          contract.familyId = LEGACY_MOLD_TO_FAMILY[legacy.moldTemplateId] ?? legacy.moldTemplateId.replace('mold_', '');
+        }
+      }
+    }
     lastProcessedDay = data.clock.day;
-    set({ clock: data.clock, company: data.company, tickCount: get().tickCount + 1, hasExistingSave: true });
+    set({ clock: data.clock, company, tickCount: get().tickCount + 1, hasExistingSave: true });
   },
 
   resetGame: () => {

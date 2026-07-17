@@ -39,6 +39,32 @@ export const MATERIALS: Material[] = [
     costPerKg: 3.6,
     density: 1.2,
   },
+  {
+    id: 'pa66',
+    name: 'Polyamide PA66',
+    meltTemp: { idealMin: 275, idealMax: 295, acceptMin: 260, acceptMax: 310 },
+    moldTemp: { idealMin: 70, idealMax: 90, acceptMin: 55, acceptMax: 105 },
+    injectionPressure: { idealMin: 900, idealMax: 1250, acceptMin: 700, acceptMax: 1500 },
+    injectionSpeed: { idealMin: 45, idealMax: 85, acceptMin: 20, acceptMax: 110 },
+    coolingTime: { idealMin: 10, idealMax: 18, acceptMin: 6, acceptMax: 26 },
+    shrinkageRate: 0.014,
+    costPerKg: 4.2,
+    density: 1.14,
+    requiresTechId: 'material_pa66',
+  },
+  {
+    id: 'tpe',
+    name: 'TPE (élastomère thermoplastique)',
+    meltTemp: { idealMin: 190, idealMax: 220, acceptMin: 175, acceptMax: 235 },
+    moldTemp: { idealMin: 15, idealMax: 35, acceptMin: 10, acceptMax: 50 },
+    injectionPressure: { idealMin: 500, idealMax: 800, acceptMin: 380, acceptMax: 950 },
+    injectionSpeed: { idealMin: 40, idealMax: 75, acceptMin: 20, acceptMax: 100 },
+    coolingTime: { idealMin: 6, idealMax: 12, acceptMin: 4, acceptMax: 20 },
+    shrinkageRate: 0.012,
+    costPerKg: 3.0,
+    density: 1.15,
+    requiresTechId: 'material_tpe',
+  },
 ];
 
 export function getMaterial(id: string): Material {

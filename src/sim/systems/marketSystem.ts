@@ -1,16 +1,15 @@
 import type { Company } from '../entities/company';
 import type { Factory } from '../entities/factory';
 import { nextContractId, type Contract } from '../entities/contract';
+import { pushEvent } from '../entities/factory';
 import { CLIENT_ARCHETYPES } from '../../data/clients';
-import { getMoldTemplate } from '../../data/molds';
+import { getMoldFamily } from '../../data/moldFamilies';
+import { COMPETITORS } from '../../data/competitors';
 import { MATERIALS } from '../../data/materials';
 import { DAY_LENGTH_MS } from '../clock';
 
 const OFFER_SHELF_LIFE_DAYS = 6;
 const MAX_AVAILABLE_OFFERS = 6;
-/** Simple competitor pressure: shaves this much off each archetype's daily
- * offer chance, representing rival plants winning some bids off-screen. */
-const COMPETITOR_PRESSURE = 0.12;
 
 export function dailyMarketUpdate(company: Company, factory: Factory, simTimeMs: number): void {
   for (const material of MATERIALS) {
@@ -19,9 +18,17 @@ export function dailyMarketUpdate(company: Company, factory: Factory, simTimeMs:
     company.materialPriceMultipliers[material.id] = clamp(current + drift, 0.7, 1.6);
   }
 
-  factory.availableContracts = factory.availableContracts.filter(
-    (c) => simTimeMs - c.offeredOnMs < OFFER_SHELF_LIFE_DAYS * DAY_LENGTH_MS,
-  );
+  const stillOffered: Contract[] = [];
+  for (const c of factory.availableContracts) {
+    const expired = simTimeMs - c.offeredOnMs >= OFFER_SHELF_LIFE_DAYS * DAY_LENGTH_MS;
+    if (expired) {
+      const rival = pickRival(c.familyId);
+      pushEvent(factory, simTimeMs, 'contract_lost', `Le contrat ${c.clientName} a été remporté par ${rival.name}.`);
+    } else {
+      stillOffered.push(c);
+    }
+  }
+  factory.availableContracts = stillOffered;
 
   if (factory.availableContracts.length >= MAX_AVAILABLE_OFFERS) return;
 
@@ -29,9 +36,10 @@ export function dailyMarketUpdate(company: Company, factory: Factory, simTimeMs:
     if (company.reputation < archetype.reputationGate) continue;
     if (factory.availableContracts.length >= MAX_AVAILABLE_OFFERS) break;
     const baseChance = 0.35;
-    if (Math.random() > baseChance - COMPETITOR_PRESSURE) continue;
+    const pressure = computeCompetitorPressure(archetype.familyId, company);
+    if (Math.random() > baseChance - pressure) continue;
 
-    const template = getMoldTemplate(archetype.moldTemplateId);
+    const family = getMoldFamily(archetype.familyId);
     const qty = Math.round(randRange(archetype.qtyMin, archetype.qtyMax));
     const priceMult = randRange(archetype.priceMultMin, archetype.priceMultMax);
     const deadlineDays = randRange(archetype.deadlineDaysMin, archetype.deadlineDaysMax);
@@ -39,19 +47,43 @@ export function dailyMarketUpdate(company: Company, factory: Factory, simTimeMs:
     const contract: Contract = {
       id: nextContractId(),
       clientName: archetype.name,
-      moldTemplateId: archetype.moldTemplateId,
+      familyId: archetype.familyId,
       quantity: qty,
       producedGood: 0,
       producedReject: 0,
-      pricePerUnit: round2(template.sellPricePerUnitBase * priceMult),
+      pricePerUnit: round2(family.sellPricePerUnitBase * priceMult),
       deadlineMs: simTimeMs + deadlineDays * DAY_LENGTH_MS,
       minQualityRatio: archetype.minQualityRatio,
       status: 'offered',
       offeredOnMs: simTimeMs,
-      penaltyPerMissingUnit: round2(template.sellPricePerUnitBase * priceMult * 0.6),
+      penaltyPerMissingUnit: round2(family.sellPricePerUnitBase * priceMult * 0.6),
     };
     factory.availableContracts.push(contract);
   }
+}
+
+/** Rival pressure: average rival strength (boosted for a rival whose
+ * specialty matches this family), scaled to a max ~0.3 swing on the base
+ * offer chance, then damped by reputation — a stronger reputation wins more
+ * bids off-screen, lowering the effective pressure the player feels. */
+export function computeCompetitorPressure(familyId: string, company: Company): number {
+  let total = 0;
+  for (const rival of COMPETITORS) {
+    total += rival.strength * (rival.specialtyFamilyId === familyId ? 1.5 : 1);
+  }
+  const raw = (total / COMPETITORS.length) * 0.3;
+  return raw * (1 - company.reputation * 0.7);
+}
+
+function pickRival(familyId: string) {
+  const weights = COMPETITORS.map((r) => r.strength * (r.specialtyFamilyId === familyId ? 1.5 : 1));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let roll = Math.random() * total;
+  for (let i = 0; i < COMPETITORS.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return COMPETITORS[i];
+  }
+  return COMPETITORS[COMPETITORS.length - 1];
 }
 
 function randRange(min: number, max: number): number {
