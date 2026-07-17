@@ -4,7 +4,7 @@ import { MOLD_FAMILIES, getMoldFamily, type ToolingTier } from '../../data/moldF
 import { getMaterial } from '../../data/materials';
 import { resolveMoldTemplate } from '../../data/molds';
 import { computeCustomMoldStats } from '../../sim/formulas/moldDesign';
-import { formatCurrency, TOOLING_TIER_LABELS } from '../format';
+import { formatCurrency, TOOLING_TIER_LABELS, MATERIAL_FAMILY_LABELS } from '../format';
 
 function availableMaterialsFor(family: { compatibleMaterialIds: string[] }, researchedTechIds: string[]): string[] {
   return family.compatibleMaterialIds.filter((id) => {
@@ -78,7 +78,7 @@ export function MoldDesignPanel() {
       <div className="material-checkboxes">
         {availableMaterials.map((id) => (
           <label key={id}>
-            <input type="checkbox" checked={selectedMaterialIds.includes(id)} onChange={() => toggleMaterial(id)} /> {getMaterial(id).name}
+            <input type="checkbox" checked={selectedMaterialIds.includes(id)} onChange={() => toggleMaterial(id)} /> {getMaterial(id).name} <em>({MATERIAL_FAMILY_LABELS[getMaterial(id).family]})</em>
           </label>
         ))}
         {availableMaterials.length === 0 && <span className="empty">Aucune matière compatible débloquée pour cette famille.</span>}

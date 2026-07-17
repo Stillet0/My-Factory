@@ -9,7 +9,7 @@ import type { Company } from '../../sim/entities/company';
 import { requiredTonnage } from '../../sim/entities/mold';
 import { repairCost, preventiveCost } from '../../sim/systems/maintenanceSystem';
 import { AUTOMATION_UPGRADE_COST } from '../../sim/systems/financeSystem';
-import { formatCurrency, formatPercent, PRESS_STATE_LABELS } from '../format';
+import { formatCurrency, formatPercent, PRESS_STATE_LABELS, MATERIAL_FAMILY_LABELS } from '../format';
 
 function ParamSlider({
   label, unit, range, value, onChange,
@@ -122,7 +122,7 @@ export function MachineTuningPanel() {
                 <option value="">— Aucune —</option>
                 {MATERIALS.filter((mat) => !mat.requiresTechId || company.researchedTechIds.includes(mat.requiresTechId)).map((mat) => (
                   <option key={mat.id} value={mat.id}>
-                    {mat.name} ({(factory.materialStockKg[mat.id] ?? 0).toFixed(0)} kg en stock)
+                    {mat.name} · {MATERIAL_FAMILY_LABELS[mat.family]} ({(factory.materialStockKg[mat.id] ?? 0).toFixed(0)} kg en stock)
                   </option>
                 ))}
               </select>

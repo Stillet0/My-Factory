@@ -45,10 +45,16 @@ export function settleContracts(company: Company, factory: Factory, simTimeMs: n
   factory.activeContracts = stillActive;
 }
 
+/** High-performance drives (press_efficiency_1) cut daily press upkeep. */
+export function pressUpkeepMultFor(company: Company): number {
+  return company.researchedTechIds.includes('press_efficiency_1') ? 0.85 : 1;
+}
+
 export function dailyFinanceUpdate(company: Company, factory: Factory, day: number): void {
   let expenses = 0;
+  const upkeepMult = pressUpkeepMultFor(company);
   for (const emp of factory.employees) expenses += emp.wagePerDay;
-  for (const press of factory.presses) expenses += getPressTemplate(press.templateId).upkeepPerDay;
+  for (const press of factory.presses) expenses += getPressTemplate(press.templateId).upkeepPerDay * upkeepMult;
 
   for (const loan of company.loans) {
     if (loan.remaining <= 0) continue;

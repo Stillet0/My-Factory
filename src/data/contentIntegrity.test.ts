@@ -74,4 +74,26 @@ describe('content integrity', () => {
     for (const id of materialIds) expect(() => getMaterial(id)).not.toThrow();
     for (const id of techIds) expect(() => getTechNode(id)).not.toThrow();
   });
+
+  it('every material has a valid thermoplastic/thermoset family tag', () => {
+    for (const material of MATERIALS) {
+      expect(['thermoplastic', 'thermoset']).toContain(material.family);
+    }
+  });
+
+  it('every thermoset material is gated behind the thermoset process tech (directly or via prerequisite)', () => {
+    for (const material of MATERIALS.filter((m) => m.family === 'thermoset')) {
+      expect(material.requiresTechId, `thermoset material ${material.id} has no requiresTechId`).toBeDefined();
+      const node = getTechNode(material.requiresTechId!);
+      const gatedByProcess = node.id === 'process_thermoset' || node.prerequisiteIds.includes('process_thermoset');
+      expect(gatedByProcess, `thermoset material ${material.id} -> tech ${node.id} doesn't require process_thermoset`).toBe(true);
+    }
+  });
+
+  it('every tech node category is one of the known categories', () => {
+    const validCategories = ['presses', 'automation', 'materials', 'quality', 'molds'];
+    for (const node of TECH_TREE) {
+      expect(validCategories).toContain(node.category);
+    }
+  });
 });

@@ -158,6 +158,32 @@ export const MOLD_FAMILIES: MoldFamily[] = [
     buildTimeDaysBase: 14,
     sellPricePerUnitBase: 6.5,
   },
+  {
+    id: 'electrical_insulator',
+    partName: 'Isolant électrique',
+    compatibleMaterialIds: ['phenolic', 'melamine', 'epoxy'],
+    allowedCavities: [2, 4, 8],
+    baseCavities: 4,
+    partVolumeCm3: 18,
+    projectedAreaCm2: 16,
+    complexityFactor: 1.2,
+    buildCostBase: 21000,
+    buildTimeDaysBase: 8,
+    sellPricePerUnitBase: 0.95,
+  },
+  {
+    id: 'rubber_seal',
+    partName: 'Joint silicone',
+    compatibleMaterialIds: ['silicone'],
+    allowedCavities: [4, 8, 16],
+    baseCavities: 8,
+    partVolumeCm3: 2,
+    projectedAreaCm2: 3,
+    complexityFactor: 0.7,
+    buildCostBase: 16000,
+    buildTimeDaysBase: 6,
+    sellPricePerUnitBase: 0.22,
+  },
 ];
 
 export function getMoldFamily(id: string): MoldFamily {

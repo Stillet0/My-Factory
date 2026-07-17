@@ -36,9 +36,15 @@ export const TECH_CATEGORY_LABELS: Record<string, string> = {
   automation: 'Automatisation',
   materials: 'Matières',
   quality: 'Qualité',
+  molds: 'Moules',
 };
 
 export const TOOLING_TIER_LABELS: Record<string, string> = {
   standard: 'Standard',
   precision: 'Précision',
+};
+
+export const MATERIAL_FAMILY_LABELS: Record<string, string> = {
+  thermoplastic: 'Thermoplastique',
+  thermoset: 'Thermodurcissable',
 };

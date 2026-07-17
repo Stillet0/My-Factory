@@ -6,6 +6,7 @@ export const MATERIALS: Material[] = [
   {
     id: 'pp',
     name: 'Polypropylène (PP)',
+    family: 'thermoplastic',
     meltTemp: { idealMin: 230, idealMax: 250, acceptMin: 210, acceptMax: 270 },
     moldTemp: { idealMin: 25, idealMax: 45, acceptMin: 15, acceptMax: 60 },
     injectionPressure: { idealMin: 700, idealMax: 950, acceptMin: 550, acceptMax: 1150 },
@@ -18,6 +19,7 @@ export const MATERIALS: Material[] = [
   {
     id: 'abs',
     name: 'ABS',
+    family: 'thermoplastic',
     meltTemp: { idealMin: 230, idealMax: 260, acceptMin: 210, acceptMax: 280 },
     moldTemp: { idealMin: 50, idealMax: 75, acceptMin: 35, acceptMax: 90 },
     injectionPressure: { idealMin: 800, idealMax: 1100, acceptMin: 650, acceptMax: 1350 },
@@ -30,6 +32,7 @@ export const MATERIALS: Material[] = [
   {
     id: 'pc',
     name: 'Polycarbonate (PC)',
+    family: 'thermoplastic',
     meltTemp: { idealMin: 285, idealMax: 310, acceptMin: 265, acceptMax: 325 },
     moldTemp: { idealMin: 80, idealMax: 105, acceptMin: 60, acceptMax: 120 },
     injectionPressure: { idealMin: 1000, idealMax: 1400, acceptMin: 800, acceptMax: 1700 },
@@ -42,6 +45,7 @@ export const MATERIALS: Material[] = [
   {
     id: 'pa66',
     name: 'Polyamide PA66',
+    family: 'thermoplastic',
     meltTemp: { idealMin: 275, idealMax: 295, acceptMin: 260, acceptMax: 310 },
     moldTemp: { idealMin: 70, idealMax: 90, acceptMin: 55, acceptMax: 105 },
     injectionPressure: { idealMin: 900, idealMax: 1250, acceptMin: 700, acceptMax: 1500 },
@@ -55,6 +59,7 @@ export const MATERIALS: Material[] = [
   {
     id: 'tpe',
     name: 'TPE (élastomère thermoplastique)',
+    family: 'thermoplastic',
     meltTemp: { idealMin: 190, idealMax: 220, acceptMin: 175, acceptMax: 235 },
     moldTemp: { idealMin: 15, idealMax: 35, acceptMin: 10, acceptMax: 50 },
     injectionPressure: { idealMin: 500, idealMax: 800, acceptMin: 380, acceptMax: 950 },
@@ -68,6 +73,7 @@ export const MATERIALS: Material[] = [
   {
     id: 'pe',
     name: 'Polyéthylène (PE)',
+    family: 'thermoplastic',
     meltTemp: { idealMin: 200, idealMax: 230, acceptMin: 180, acceptMax: 250 },
     moldTemp: { idealMin: 20, idealMax: 40, acceptMin: 10, acceptMax: 55 },
     injectionPressure: { idealMin: 600, idealMax: 900, acceptMin: 450, acceptMax: 1100 },
@@ -80,6 +86,7 @@ export const MATERIALS: Material[] = [
   {
     id: 'ps',
     name: 'Polystyrène (PS)',
+    family: 'thermoplastic',
     meltTemp: { idealMin: 200, idealMax: 240, acceptMin: 180, acceptMax: 260 },
     moldTemp: { idealMin: 20, idealMax: 50, acceptMin: 10, acceptMax: 65 },
     injectionPressure: { idealMin: 700, idealMax: 1000, acceptMin: 550, acceptMax: 1200 },
@@ -92,6 +99,7 @@ export const MATERIALS: Material[] = [
   {
     id: 'pvc',
     name: 'PVC rigide',
+    family: 'thermoplastic',
     meltTemp: { idealMin: 175, idealMax: 200, acceptMin: 160, acceptMax: 215 },
     moldTemp: { idealMin: 25, idealMax: 45, acceptMin: 15, acceptMax: 60 },
     injectionPressure: { idealMin: 800, idealMax: 1100, acceptMin: 650, acceptMax: 1300 },
@@ -104,6 +112,7 @@ export const MATERIALS: Material[] = [
   {
     id: 'pmma',
     name: 'PMMA (Plexiglas)',
+    family: 'thermoplastic',
     meltTemp: { idealMin: 230, idealMax: 260, acceptMin: 210, acceptMax: 280 },
     moldTemp: { idealMin: 55, idealMax: 80, acceptMin: 40, acceptMax: 95 },
     injectionPressure: { idealMin: 900, idealMax: 1300, acceptMin: 700, acceptMax: 1550 },
@@ -117,6 +126,7 @@ export const MATERIALS: Material[] = [
   {
     id: 'pom',
     name: 'POM (Acétal)',
+    family: 'thermoplastic',
     meltTemp: { idealMin: 190, idealMax: 210, acceptMin: 175, acceptMax: 225 },
     moldTemp: { idealMin: 80, idealMax: 100, acceptMin: 65, acceptMax: 115 },
     injectionPressure: { idealMin: 900, idealMax: 1200, acceptMin: 700, acceptMax: 1450 },
@@ -126,6 +136,68 @@ export const MATERIALS: Material[] = [
     costPerKg: 3.8,
     density: 1.41,
     requiresTechId: 'material_pom',
+  },
+  {
+    id: 'epoxy',
+    name: 'Résine époxy',
+    family: 'thermoset',
+    // Thermosets are pre-heated (not fully melted) then cured in a mold
+    // hotter than the material itself — the inverse of a thermoplastic's
+    // cool-mold/hot-melt relationship. "coolingTime" here means cure time.
+    meltTemp: { idealMin: 90, idealMax: 110, acceptMin: 75, acceptMax: 125 },
+    moldTemp: { idealMin: 150, idealMax: 170, acceptMin: 135, acceptMax: 185 },
+    injectionPressure: { idealMin: 700, idealMax: 1000, acceptMin: 550, acceptMax: 1200 },
+    injectionSpeed: { idealMin: 20, idealMax: 45, acceptMin: 10, acceptMax: 65 },
+    coolingTime: { idealMin: 45, idealMax: 70, acceptMin: 30, acceptMax: 90 },
+    shrinkageRate: 0.003,
+    costPerKg: 5.5,
+    density: 1.85,
+    requiresTechId: 'material_epoxy',
+  },
+  {
+    id: 'phenolic',
+    name: 'Phénolique (Bakélite)',
+    family: 'thermoset',
+    meltTemp: { idealMin: 85, idealMax: 100, acceptMin: 70, acceptMax: 115 },
+    moldTemp: { idealMin: 160, idealMax: 180, acceptMin: 145, acceptMax: 195 },
+    injectionPressure: { idealMin: 800, idealMax: 1100, acceptMin: 650, acceptMax: 1300 },
+    injectionSpeed: { idealMin: 15, idealMax: 40, acceptMin: 8, acceptMax: 60 },
+    coolingTime: { idealMin: 35, idealMax: 55, acceptMin: 25, acceptMax: 75 },
+    shrinkageRate: 0.007,
+    costPerKg: 2.4,
+    density: 1.4,
+    requiresTechId: 'material_phenolic',
+  },
+  {
+    id: 'melamine',
+    name: 'Mélamine',
+    family: 'thermoset',
+    meltTemp: { idealMin: 90, idealMax: 105, acceptMin: 75, acceptMax: 120 },
+    moldTemp: { idealMin: 150, idealMax: 165, acceptMin: 135, acceptMax: 180 },
+    injectionPressure: { idealMin: 900, idealMax: 1200, acceptMin: 700, acceptMax: 1400 },
+    injectionSpeed: { idealMin: 15, idealMax: 35, acceptMin: 8, acceptMax: 55 },
+    coolingTime: { idealMin: 30, idealMax: 50, acceptMin: 20, acceptMax: 65 },
+    shrinkageRate: 0.009,
+    costPerKg: 2.8,
+    density: 1.5,
+    requiresTechId: 'material_melamine',
+  },
+  {
+    id: 'silicone',
+    name: 'Silicone liquide (LSR)',
+    family: 'thermoset',
+    // LSR is injected cold (two-part mix at ~room temp) into a very hot
+    // mold and cures fast — the most extreme melt/mold inversion in the
+    // catalog.
+    meltTemp: { idealMin: 20, idealMax: 30, acceptMin: 15, acceptMax: 40 },
+    moldTemp: { idealMin: 170, idealMax: 195, acceptMin: 155, acceptMax: 210 },
+    injectionPressure: { idealMin: 400, idealMax: 700, acceptMin: 300, acceptMax: 900 },
+    injectionSpeed: { idealMin: 30, idealMax: 60, acceptMin: 15, acceptMax: 90 },
+    coolingTime: { idealMin: 15, idealMax: 25, acceptMin: 10, acceptMax: 35 },
+    shrinkageRate: 0.025,
+    costPerKg: 7.5,
+    density: 1.15,
+    requiresTechId: 'material_silicone',
   },
 ];
 

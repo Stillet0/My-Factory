@@ -47,7 +47,7 @@ function tryStartCycle(company: Company, factory: Factory, press: Press, hourOfD
 
   factory.materialStockKg[press.materialId] = stock - shotWeightKg;
   press.state = 'clamping';
-  press.stateTimeRemainingMs = CLAMP_MS;
+  press.stateTimeRemainingMs = CLAMP_MS * cycleOverheadMultFor(company);
 }
 
 function advanceState(company: Company, factory: Factory, press: Press, simTimeMs: number): void {
@@ -69,12 +69,12 @@ function advanceState(company: Company, factory: Factory, press: Press, simTimeM
     }
     case 'injecting': {
       press.state = 'cooling';
-      press.stateTimeRemainingMs = press.params.coolingTime * 1000 * template.complexityFactor;
+      press.stateTimeRemainingMs = press.params.coolingTime * 1000 * template.complexityFactor * coolingTimeMultFor(company);
       break;
     }
     case 'cooling': {
       press.state = 'ejecting';
-      press.stateTimeRemainingMs = EJECT_MS;
+      press.stateTimeRemainingMs = EJECT_MS * cycleOverheadMultFor(company);
       break;
     }
     case 'ejecting': {
@@ -106,7 +106,7 @@ function completeCycle(company: Company, factory: Factory, press: Press, mold: M
     contract.producedReject += outcome.reject;
   }
 
-  applyCycleWear(press, mold, effectiveRejectProbability, template.wearRateMult);
+  applyCycleWear(press, mold, effectiveRejectProbability, template.wearRateMult * moldWearTechMultFor(company));
   if (rollBreakdown(press)) {
     press.state = 'fault';
     press.faultReason = 'Panne mécanique — la presse nécessite une réparation.';
@@ -127,4 +127,22 @@ export function applyAutomationPenalty(rejectProbability: number, automated: boo
  * automation program closes most of the gap with a skilled operator. */
 export function automationPenaltyFor(company: Company): number {
   return company.researchedTechIds.includes('automation_2') ? 0.01 : 0.03;
+}
+
+/** Quick mold-change tooling (press_quick_changeover) trims the fixed
+ * clamp/eject overhead on every cycle. */
+export function cycleOverheadMultFor(company: Company): number {
+  return company.researchedTechIds.includes('press_quick_changeover') ? 0.6 : 1;
+}
+
+/** Hot-runner systems (mold_hot_runner) shorten the cooling/cure phase of
+ * every cycle by keeping the melt path hot and the heat transfer consistent. */
+export function coolingTimeMultFor(company: Company): number {
+  return company.researchedTechIds.includes('mold_hot_runner') ? 0.85 : 1;
+}
+
+/** An anti-wear tooling coating (mold_wear_coating) slows mold wear
+ * accumulation across the board, on top of any per-template wearRateMult. */
+export function moldWearTechMultFor(company: Company): number {
+  return company.researchedTechIds.includes('mold_wear_coating') ? 0.7 : 1;
 }

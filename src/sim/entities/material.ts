@@ -9,9 +9,15 @@ export interface ProcessRange {
   acceptMax: number;
 }
 
+export type MaterialFamily = 'thermoplastic' | 'thermoset';
+
 export interface Material {
   id: string;
   name: string;
+  /** Thermoplastics are remelted/cooled each cycle; thermosets are injected
+   * into a hot mold and cure irreversibly — same ProcessParams shape, very
+   * different numeric windows (mold hotter than melt, "cooling" = cure time). */
+  family: MaterialFamily;
   /** Melt (barrel) temperature, °C. */
   meltTemp: ProcessRange;
   /** Mold surface temperature, °C. */
@@ -20,7 +26,7 @@ export interface Material {
   injectionPressure: ProcessRange;
   /** Injection speed, mm/s (screw/ram velocity). */
   injectionSpeed: ProcessRange;
-  /** Cooling time, seconds, before the part is rigid enough to eject. */
+  /** Cooling time, seconds, before the part is rigid enough to eject (cure time for thermosets). */
   coolingTime: ProcessRange;
   /** Volumetric shrinkage, used for warping risk. */
   shrinkageRate: number;

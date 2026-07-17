@@ -3,7 +3,7 @@ import { useGameStore } from '../../store/gameStore';
 import { PRESSES } from '../../data/presses';
 import { MOLD_TEMPLATES } from '../../data/molds';
 import { MATERIALS } from '../../data/materials';
-import { formatCurrency, formatDay } from '../format';
+import { formatCurrency, formatDay, MATERIAL_FAMILY_LABELS } from '../format';
 
 export function FinancePanel() {
   useGameStore((s) => s.tickCount);
@@ -80,7 +80,7 @@ export function FinancePanel() {
           const cost = qty * mat.costPerKg * mult;
           return (
             <li key={mat.id} className="shop-item shop-item--material">
-              <span>{mat.name} — {(mat.costPerKg * mult).toFixed(2)} €/kg ({(factory.materialStockKg[mat.id] ?? 0).toFixed(0)} kg en stock)</span>
+              <span>{mat.name} <em>({MATERIAL_FAMILY_LABELS[mat.family]})</em> — {(mat.costPerKg * mult).toFixed(2)} €/kg ({(factory.materialStockKg[mat.id] ?? 0).toFixed(0)} kg en stock)</span>
               <input
                 type="number"
                 min={10}

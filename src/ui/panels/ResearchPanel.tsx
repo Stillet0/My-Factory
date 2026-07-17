@@ -2,7 +2,7 @@ import { useGameStore } from '../../store/gameStore';
 import { TECH_TREE, getTechNode, type TechCategory } from '../../data/techtree';
 import { formatCurrency, TECH_CATEGORY_LABELS } from '../format';
 
-const CATEGORIES: TechCategory[] = ['presses', 'automation', 'materials', 'quality'];
+const CATEGORIES: TechCategory[] = ['presses', 'molds', 'automation', 'materials', 'quality'];
 
 export function ResearchPanel() {
   useGameStore((s) => s.tickCount);

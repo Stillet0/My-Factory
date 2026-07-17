@@ -4,7 +4,10 @@ import { createFactory } from '../entities/factory';
 import { createPress } from '../entities/press';
 import { createMold } from '../entities/mold';
 import { nextContractId, type Contract } from '../entities/contract';
-import { tickProduction, applyAutomationPenalty, automationPenaltyFor } from './productionSystem';
+import {
+  tickProduction, applyAutomationPenalty, automationPenaltyFor,
+  cycleOverheadMultFor, coolingTimeMultFor, moldWearTechMultFor,
+} from './productionSystem';
 
 describe('applyAutomationPenalty', () => {
   it('returns the input unchanged when not automated', () => {
@@ -34,6 +37,29 @@ describe('automationPenaltyFor', () => {
     const company = createCompany();
     company.researchedTechIds.push('automation_2');
     expect(automationPenaltyFor(company)).toBe(0.01);
+  });
+});
+
+describe('press/mold tech multipliers', () => {
+  it('cycleOverheadMultFor drops to 0.6 once press_quick_changeover is researched', () => {
+    const company = createCompany();
+    expect(cycleOverheadMultFor(company)).toBe(1);
+    company.researchedTechIds.push('press_quick_changeover');
+    expect(cycleOverheadMultFor(company)).toBe(0.6);
+  });
+
+  it('coolingTimeMultFor drops to 0.85 once mold_hot_runner is researched', () => {
+    const company = createCompany();
+    expect(coolingTimeMultFor(company)).toBe(1);
+    company.researchedTechIds.push('mold_hot_runner');
+    expect(coolingTimeMultFor(company)).toBe(0.85);
+  });
+
+  it('moldWearTechMultFor drops to 0.7 once mold_wear_coating is researched', () => {
+    const company = createCompany();
+    expect(moldWearTechMultFor(company)).toBe(1);
+    company.researchedTechIds.push('mold_wear_coating');
+    expect(moldWearTechMultFor(company)).toBe(0.7);
   });
 });
 

@@ -6,6 +6,7 @@ import { createEmployee } from '../entities/employee';
 import {
   purchasePress, dailyFinanceUpdate, buyMaterial, takeLoan, designMold, startResearch,
   foundFactory, foundFactoryCost, transferMaterialCost, chargeMaterialTransfer, chargeMoldTransfer, MOLD_TRANSFER_COST,
+  pressUpkeepMultFor,
 } from './financeSystem';
 import { getMaterial } from '../../data/materials';
 import { getMoldFamily } from '../../data/moldFamilies';
@@ -41,6 +42,27 @@ describe('financeSystem', () => {
     expect(company.cash).toBe(10000 - expectedExpenses);
     expect(company.history).toHaveLength(1);
     expect(company.history[0].expenses).toBe(expectedExpenses);
+  });
+
+  it('dailyFinanceUpdate applies the press_efficiency_1 upkeep discount once researched', () => {
+    const company = createCompany();
+    company.cash = 10000;
+    company.researchedTechIds.push('press_efficiency_1');
+    const factory = createFactory('f1', 'Test');
+    factory.presses.push(createPress('p1', 'press_60t'));
+    company.factories.push(factory);
+
+    dailyFinanceUpdate(company, factory, 1);
+
+    const expectedExpenses = 12 * 0.85; // press_60t upkeep at the discounted rate, no employees
+    expect(company.cash).toBeCloseTo(10000 - expectedExpenses);
+  });
+
+  it('pressUpkeepMultFor is 1 without the tech and 0.85 with it', () => {
+    const company = createCompany();
+    expect(pressUpkeepMultFor(company)).toBe(1);
+    company.researchedTechIds.push('press_efficiency_1');
+    expect(pressUpkeepMultFor(company)).toBe(0.85);
   });
 
   it('buyMaterial adds stock and deducts cash at the current price multiplier', () => {
