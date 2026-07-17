@@ -93,7 +93,7 @@ function completeCycle(company: Company, factory: Factory, press: Press, mold: M
   const clampMarginRatio = (pressTemplate.tonnage - requiredTonnage(template)) / pressTemplate.tonnage;
 
   const quality = computeQuality(press.params, material, mold.wear, clampMarginRatio);
-  const effectiveRejectProbability = applyAutomationPenalty(quality.rejectProbability, press.automated);
+  const effectiveRejectProbability = applyAutomationPenalty(quality.rejectProbability, press.automated, automationPenaltyFor(company));
   const outcome = rollShotOutcome({ ...quality, rejectProbability: effectiveRejectProbability }, template.cavities);
 
   press.cyclesRun++;
@@ -118,6 +118,13 @@ function completeCycle(company: Company, factory: Factory, press: Press, mold: M
  * once parameters can't fully replace — a small flat penalty represents this,
  * so automating is a genuine tradeoff (frees an operator to reassign/hire
  * elsewhere) rather than a strict quality upgrade. */
-export function applyAutomationPenalty(rejectProbability: number, automated: boolean): number {
-  return automated ? Math.min(1, rejectProbability + 0.03) : rejectProbability;
+export function applyAutomationPenalty(rejectProbability: number, automated: boolean, penalty = 0.03): number {
+  return automated ? Math.min(1, rejectProbability + penalty) : rejectProbability;
+}
+
+/** Advanced robotic cells (automation_2) cut the automation quality penalty
+ * roughly in third — the tradeoff never fully disappears, but a mature
+ * automation program closes most of the gap with a skilled operator. */
+export function automationPenaltyFor(company: Company): number {
+  return company.researchedTechIds.includes('automation_2') ? 0.01 : 0.03;
 }

@@ -2,6 +2,15 @@ import type { PressTemplate } from '../sim/entities/press';
 
 export const PRESSES: PressTemplate[] = [
   {
+    id: 'press_30t',
+    name: 'Presse 30T',
+    tonnage: 30,
+    costBase: 10000,
+    maxInjectionRateCm3s: 25,
+    energyKw: 5,
+    upkeepPerDay: 7,
+  },
+  {
     id: 'press_60t',
     name: 'Presse 60T',
     tonnage: 60,
@@ -37,6 +46,16 @@ export const PRESSES: PressTemplate[] = [
     energyKw: 38,
     upkeepPerDay: 48,
     requiresTechId: 'press_400t',
+  },
+  {
+    id: 'press_600t',
+    name: 'Presse 600T',
+    tonnage: 600,
+    costBase: 150000,
+    maxInjectionRateCm3s: 200,
+    energyKw: 55,
+    upkeepPerDay: 70,
+    requiresTechId: 'press_600t',
   },
 ];
 

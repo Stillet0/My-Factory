@@ -9,7 +9,7 @@ import { MATERIALS } from '../../data/materials';
 import { DAY_LENGTH_MS } from '../clock';
 
 const OFFER_SHELF_LIFE_DAYS = 6;
-const MAX_AVAILABLE_OFFERS = 6;
+const MAX_AVAILABLE_OFFERS = 9;
 
 export function dailyMarketUpdate(company: Company, factory: Factory, simTimeMs: number): void {
   for (const material of MATERIALS) {

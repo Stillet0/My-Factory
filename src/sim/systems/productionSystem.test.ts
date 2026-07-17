@@ -4,19 +4,36 @@ import { createFactory } from '../entities/factory';
 import { createPress } from '../entities/press';
 import { createMold } from '../entities/mold';
 import { nextContractId, type Contract } from '../entities/contract';
-import { tickProduction, applyAutomationPenalty } from './productionSystem';
+import { tickProduction, applyAutomationPenalty, automationPenaltyFor } from './productionSystem';
 
 describe('applyAutomationPenalty', () => {
   it('returns the input unchanged when not automated', () => {
     expect(applyAutomationPenalty(0.2, false)).toBe(0.2);
   });
 
-  it('adds a flat 0.03 penalty when automated', () => {
+  it('adds a flat 0.03 penalty by default when automated', () => {
     expect(applyAutomationPenalty(0.2, true)).toBeCloseTo(0.23);
+  });
+
+  it('accepts a custom penalty amount', () => {
+    expect(applyAutomationPenalty(0.2, true, 0.01)).toBeCloseTo(0.21);
   });
 
   it('clamps the penalized probability to 1', () => {
     expect(applyAutomationPenalty(0.99, true)).toBe(1);
+  });
+});
+
+describe('automationPenaltyFor', () => {
+  it('is 0.03 without the advanced automation tech', () => {
+    const company = createCompany();
+    expect(automationPenaltyFor(company)).toBe(0.03);
+  });
+
+  it('drops to 0.01 once automation_2 is researched', () => {
+    const company = createCompany();
+    company.researchedTechIds.push('automation_2');
+    expect(automationPenaltyFor(company)).toBe(0.01);
   });
 });
 
