@@ -10,7 +10,6 @@ import { isOnShiftNow } from '../entities/employee';
 import { computeQuality } from '../formulas/defects';
 import { rollShotOutcome } from './qualitySystem';
 import { applyCycleWear, rollBreakdown } from './maintenanceSystem';
-import { isComplete } from '../entities/contract';
 
 /** Advances every press in the factory by one fixed tick. */
 export function tickProduction(company: Company, factory: Factory, tickMs: number, simTimeMs: number, hourOfDay: number): void {
@@ -35,10 +34,7 @@ function tryStartCycle(company: Company, factory: Factory, press: Press, hourOfD
   }
   const mold = factory.molds.find((m) => m.id === press.moldId);
   const contract = factory.activeContracts.find((c) => c.id === press.contractId);
-  if (!mold || !contract || isComplete(contract)) return;
-  // Already produced (or boxed awaiting pickup) enough to cover the order —
-  // don't keep grinding out material while a forklift catches up on delivery.
-  if (contract.producedGood + press.pendingGoodUnits >= contract.quantity) return;
+  if (!mold || !contract) return;
   const template = resolveMoldTemplate(company, mold.templateId);
   if (template.familyId !== contract.familyId) return;
 

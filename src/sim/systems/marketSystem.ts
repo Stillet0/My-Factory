@@ -1,15 +1,16 @@
 import type { Company } from '../entities/company';
 import type { Factory } from '../entities/factory';
 import { nextContractId, type Contract } from '../entities/contract';
-import { pushEvent } from '../entities/factory';
 import { CLIENT_ARCHETYPES } from '../../data/clients';
 import { getMoldFamily } from '../../data/moldFamilies';
 import { COMPETITORS } from '../../data/competitors';
 import { MATERIALS } from '../../data/materials';
-import { DAY_LENGTH_MS } from '../clock';
 
-const OFFER_SHELF_LIFE_DAYS = 6;
-const MAX_AVAILABLE_OFFERS = 9;
+/** Base odds an eligible client shows up in a given day's offer batch —
+ * high enough that the player sees a near-complete daily menu to shop for
+ * the best price, reduced per-family by how much competitor pressure that
+ * family is under. */
+const BASE_OFFER_CHANCE = 0.6;
 
 export function dailyMarketUpdate(company: Company, factory: Factory, simTimeMs: number): void {
   for (const material of MATERIALS) {
@@ -18,48 +19,29 @@ export function dailyMarketUpdate(company: Company, factory: Factory, simTimeMs:
     company.materialPriceMultipliers[material.id] = clamp(current + drift, 0.7, 1.6);
   }
 
-  const stillOffered: Contract[] = [];
-  for (const c of factory.availableContracts) {
-    const expired = simTimeMs - c.offeredOnMs >= OFFER_SHELF_LIFE_DAYS * DAY_LENGTH_MS;
-    if (expired) {
-      const rival = pickRival(c.familyId);
-      pushEvent(factory, simTimeMs, 'contract_lost', `Le contrat ${c.clientName} a été remporté par ${rival.name}.`);
-    } else {
-      stillOffered.push(c);
-    }
-  }
-  factory.availableContracts = stillOffered;
-
-  if (factory.availableContracts.length >= MAX_AVAILABLE_OFFERS) return;
-
+  // Yesterday's unsigned offers are gone — the whole menu is rebuilt fresh
+  // every day so the player is always comparing today's best prices.
+  const offers: Contract[] = [];
   for (const archetype of CLIENT_ARCHETYPES) {
     if (company.reputation < archetype.reputationGate) continue;
-    if (factory.availableContracts.length >= MAX_AVAILABLE_OFFERS) break;
-    const baseChance = 0.35;
     const pressure = computeCompetitorPressure(archetype.familyId, company);
-    if (Math.random() > baseChance - pressure) continue;
+    if (Math.random() > BASE_OFFER_CHANCE - pressure) continue;
 
     const family = getMoldFamily(archetype.familyId);
-    const qty = Math.round(randRange(archetype.qtyMin, archetype.qtyMax));
     const priceMult = randRange(archetype.priceMultMin, archetype.priceMultMax);
-    const deadlineDays = randRange(archetype.deadlineDaysMin, archetype.deadlineDaysMax);
 
-    const contract: Contract = {
+    offers.push({
       id: nextContractId(),
       clientName: archetype.name,
       familyId: archetype.familyId,
-      quantity: qty,
+      pricePerUnit: round2(family.sellPricePerUnitBase * priceMult),
       producedGood: 0,
       producedReject: 0,
-      pricePerUnit: round2(family.sellPricePerUnitBase * priceMult),
-      deadlineMs: simTimeMs + deadlineDays * DAY_LENGTH_MS,
-      minQualityRatio: archetype.minQualityRatio,
       status: 'offered',
       offeredOnMs: simTimeMs,
-      penaltyPerMissingUnit: round2(family.sellPricePerUnitBase * priceMult * 0.6),
-    };
-    factory.availableContracts.push(contract);
+    });
   }
+  factory.availableContracts = offers;
 }
 
 /** Rival pressure: average rival strength (boosted for a rival whose
@@ -73,17 +55,6 @@ export function computeCompetitorPressure(familyId: string, company: Company): n
   }
   const raw = (total / COMPETITORS.length) * 0.3;
   return raw * (1 - company.reputation * 0.7);
-}
-
-function pickRival(familyId: string) {
-  const weights = COMPETITORS.map((r) => r.strength * (r.specialtyFamilyId === familyId ? 1.5 : 1));
-  const total = weights.reduce((a, b) => a + b, 0);
-  let roll = Math.random() * total;
-  for (let i = 0; i < COMPETITORS.length; i++) {
-    roll -= weights[i];
-    if (roll <= 0) return COMPETITORS[i];
-  }
-  return COMPETITORS[COMPETITORS.length - 1];
 }
 
 function randRange(min: number, max: number): number {

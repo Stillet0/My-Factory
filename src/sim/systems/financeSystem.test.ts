@@ -7,7 +7,7 @@ import { nextContractId, type Contract } from '../entities/contract';
 import {
   purchasePress, dailyFinanceUpdate, buyMaterial, takeLoan, designMold, startResearch,
   foundFactory, foundFactoryCost, transferMaterialCost, chargeMaterialTransfer, chargeMoldTransfer, MOLD_TRANSFER_COST,
-  pressUpkeepMultFor, settleContracts,
+  pressUpkeepMultFor, cancelContract,
 } from './financeSystem';
 import { getMaterial } from '../../data/materials';
 import { getMoldFamily } from '../../data/moldFamilies';
@@ -181,48 +181,16 @@ describe('financeSystem', () => {
     });
   });
 
-  describe('settleContracts', () => {
+  describe('cancelContract', () => {
     function makeContract(overrides: Partial<Contract> = {}): Contract {
       return {
-        id: nextContractId(), clientName: 'Test Client', familyId: 'cap', quantity: 10,
-        producedGood: 0, producedReject: 0, pricePerUnit: 0.2, deadlineMs: 1000,
-        minQualityRatio: 0.5, status: 'active', offeredOnMs: 0, penaltyPerMissingUnit: 0.1,
+        id: nextContractId(), clientName: 'Test Client', familyId: 'cap', pricePerUnit: 0.2,
+        producedGood: 0, producedReject: 0, status: 'active', offeredOnMs: 0,
         ...overrides,
       };
     }
 
-    it('clears contractId on any press still pointing at a completed contract', () => {
-      const company = createCompany();
-      const factory = createFactory('f1', 'Test');
-      const press = createPress('p1', 'press_60t');
-      factory.presses.push(press);
-      const contract = makeContract({ producedGood: 10 });
-      factory.activeContracts.push(contract);
-      press.contractId = contract.id;
-
-      settleContracts(company, factory, 500);
-
-      expect(factory.activeContracts).toHaveLength(0);
-      expect(press.contractId).toBeNull();
-    });
-
-    it('clears contractId on any press still pointing at an overdue/failed contract', () => {
-      const company = createCompany();
-      const factory = createFactory('f1', 'Test');
-      const press = createPress('p1', 'press_60t');
-      factory.presses.push(press);
-      const contract = makeContract({ deadlineMs: 100 });
-      factory.activeContracts.push(contract);
-      press.contractId = contract.id;
-
-      settleContracts(company, factory, 200); // past deadlineMs
-
-      expect(factory.activeContracts).toHaveLength(0);
-      expect(press.contractId).toBeNull();
-    });
-
-    it('leaves contractId untouched for presses referencing a still-active contract', () => {
-      const company = createCompany();
+    it('removes the contract from activeContracts and clears any press pointing at it', () => {
       const factory = createFactory('f1', 'Test');
       const press = createPress('p1', 'press_60t');
       factory.presses.push(press);
@@ -230,10 +198,17 @@ describe('financeSystem', () => {
       factory.activeContracts.push(contract);
       press.contractId = contract.id;
 
-      settleContracts(company, factory, 500); // before deadlineMs, not complete
+      const result = cancelContract(factory, contract.id);
 
-      expect(factory.activeContracts).toHaveLength(1);
-      expect(press.contractId).toBe(contract.id);
+      expect(result.ok).toBe(true);
+      expect(factory.activeContracts).toHaveLength(0);
+      expect(contract.status).toBe('cancelled');
+      expect(press.contractId).toBeNull();
+    });
+
+    it('rejects an unknown contract id', () => {
+      const factory = createFactory('f1', 'Test');
+      expect(cancelContract(factory, 'nope').ok).toBe(false);
     });
   });
 

@@ -12,9 +12,8 @@ const ON_SHIFT_HOUR = 10; // inside the 'morning' shift window (6-14)
 
 function makeContract(overrides: Partial<Contract> = {}): Contract {
   return {
-    id: nextContractId(), clientName: 'Test Client', familyId: 'cap', quantity: 1000,
-    producedGood: 0, producedReject: 0, pricePerUnit: 0.2, deadlineMs: 999999999,
-    minQualityRatio: 0.5, status: 'active', offeredOnMs: 0, penaltyPerMissingUnit: 0.1,
+    id: nextContractId(), clientName: 'Test Client', familyId: 'cap', pricePerUnit: 0.2,
+    producedGood: 0, producedReject: 0, status: 'active', offeredOnMs: 0,
     ...overrides,
   };
 }
@@ -78,11 +77,12 @@ describe('tickLabor', () => {
     expect(setter.task).toBeNull();
   });
 
-  it('a forklift delivers a press\'s pending units into the assigned contract, then clears the buffer', () => {
+  it("a forklift delivers a press's pending units into the assigned contract and sells them instantly", () => {
     const company = createCompany();
+    const cashBefore = company.cash;
     const factory = createFactory('f1', 'Test');
     const press = createPress('p1', 'press_60t');
-    const contract = makeContract();
+    const contract = makeContract({ pricePerUnit: 0.5 });
     factory.activeContracts.push(contract);
     press.contractId = contract.id;
     press.pendingGoodUnits = 42;
@@ -93,10 +93,12 @@ describe('tickLabor', () => {
     tickLabor(company, factory, 0, ON_SHIFT_HOUR);
     expect(forklift.task).toBe('deliver');
     expect(contract.producedGood).toBe(0); // still in transit
+    expect(company.cash).toBe(cashBefore);
 
     tickLabor(company, factory, DELIVER_TASK_MS, ON_SHIFT_HOUR);
     expect(contract.producedGood).toBe(42);
     expect(press.pendingGoodUnits).toBe(0);
+    expect(company.cash).toBeCloseTo(cashBefore + 42 * 0.5);
     expect(forklift.task).toBeNull();
   });
 

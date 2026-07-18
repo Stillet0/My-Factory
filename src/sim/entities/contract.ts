@@ -1,29 +1,23 @@
-export type ContractStatus = 'offered' | 'active' | 'completed' | 'failed';
+export type ContractStatus = 'offered' | 'active' | 'cancelled';
 
+/** A standing price agreement with a client, not a one-off order: once
+ * signed it produces indefinitely at pricePerUnit until the player cancels
+ * it (or replaces it with a better-paying offer). */
 export interface Contract {
   id: string;
   clientName: string;
   /** MoldFamily id — fulfillable by any mold (catalog or custom) of this family. */
   familyId: string;
-  quantity: number;
-  producedGood: number;
-  producedReject: number;
   pricePerUnit: number;
-  /** Simulated ms timestamp by which the order must be fully delivered. */
-  deadlineMs: number;
-  /** Minimum fraction of good (non-rejected) parts required, else penalty. */
-  minQualityRatio: number;
   status: ContractStatus;
   offeredOnMs: number;
-  penaltyPerMissingUnit: number;
+  /** Lifetime units sold/rejected under this contract — informational only. */
+  producedGood: number;
+  producedReject: number;
 }
 
 let contractSeq = 0;
 export function nextContractId(): string {
   contractSeq++;
   return `ct_${contractSeq}`;
-}
-
-export function isComplete(c: Contract): boolean {
-  return c.producedGood >= c.quantity;
 }

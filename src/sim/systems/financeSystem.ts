@@ -1,7 +1,5 @@
 import type { Company, Loan } from '../entities/company';
 import type { Factory } from '../entities/factory';
-import { pushEvent } from '../entities/factory';
-import { isComplete } from '../entities/contract';
 import { getPressTemplate } from '../../data/presses';
 import { getMoldTemplate } from '../../data/molds';
 import type { MoldTemplate } from '../entities/mold';
@@ -10,44 +8,19 @@ import type { MoldFamily, ToolingTier } from '../../data/moldFamilies';
 import { computeCustomMoldStats } from '../formulas/moldDesign';
 import { getTechNode } from '../../data/techtree';
 
-/** Settles contracts that are finished or past their deadline. Runs every tick
- * so deliveries/failures happen as soon as they occur, not just at day end. */
-export function settleContracts(company: Company, factory: Factory, simTimeMs: number): void {
-  const stillActive: typeof factory.activeContracts = [];
-  for (const contract of factory.activeContracts) {
-    const overdue = simTimeMs > contract.deadlineMs;
-    if (isComplete(contract) || overdue) {
-      const totalMade = contract.producedGood + contract.producedReject;
-      const qualityRatio = totalMade > 0 ? contract.producedGood / totalMade : 0;
-      const deliverable = Math.min(contract.producedGood, contract.quantity);
-      const missing = Math.max(0, contract.quantity - deliverable);
-      const meetsQuality = qualityRatio >= contract.minQualityRatio || totalMade === 0;
-
-      if (deliverable > 0 && (isComplete(contract) || deliverable >= contract.quantity * 0.5)) {
-        const revenue = deliverable * contract.pricePerUnit - missing * contract.penaltyPerMissingUnit;
-        company.cash += revenue;
-        company.dayRevenueAccumulator += revenue;
-        company.reputation = clamp01(company.reputation + (meetsQuality && missing === 0 ? 0.02 : -0.01));
-        pushEvent(
-          factory,
-          simTimeMs,
-          missing === 0 && meetsQuality ? 'contract_delivered' : 'contract_failed',
-          `${contract.clientName}: ${deliverable}/${contract.quantity} livrées, ${round2(revenue)} en caisse.`,
-        );
-      } else {
-        company.reputation = clamp01(company.reputation - 0.03);
-        pushEvent(factory, simTimeMs, 'contract_failed', `${contract.clientName}: commande manquée, réputation entamée.`);
-      }
-      for (const press of factory.presses) {
-        if (press.contractId === contract.id) {
-          press.contractId = null;
-        }
-      }
-      continue;
-    }
-    stillActive.push(contract);
+/** Cancels a standing contract: pulls it out of activeContracts and frees
+ * any press that was working it, so the setter re-equips it for something
+ * else. Free of charge — a contract is just a price agreement, not a
+ * binding order, so there's nothing to pay out of. */
+export function cancelContract(factory: Factory, contractId: string): { ok: boolean } {
+  const idx = factory.activeContracts.findIndex((c) => c.id === contractId);
+  if (idx === -1) return { ok: false };
+  const [contract] = factory.activeContracts.splice(idx, 1);
+  contract.status = 'cancelled';
+  for (const press of factory.presses) {
+    if (press.contractId === contract.id) press.contractId = null;
   }
-  factory.activeContracts = stillActive;
+  return { ok: true };
 }
 
 /** High-performance drives (press_efficiency_1) cut daily press upkeep. */
@@ -199,9 +172,6 @@ export function takeLoan(company: Company, amount: number): void {
   company.loans.push(loan);
 }
 
-function clamp01(v: number): number {
-  return Math.max(0, Math.min(1, v));
-}
 function round2(v: number): number {
   return Math.round(v * 100) / 100;
 }

@@ -377,6 +377,12 @@ h3 { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-
   font-style: italic;
 }
 
+.panel__hint {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
 @media (max-width: 860px) {
   .app-body { flex-direction: column; }
   .app-sidebar { width: 100%; max-width: 100%; border-left: none; border-top: 1px solid var(--border); flex: 1; }

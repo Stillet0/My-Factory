@@ -2,7 +2,6 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createCompany } from '../entities/company';
 import { createFactory } from '../entities/factory';
 import { dailyMarketUpdate, computeCompetitorPressure } from './marketSystem';
-import { DAY_LENGTH_MS } from '../clock';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -26,20 +25,17 @@ describe('computeCompetitorPressure', () => {
 });
 
 describe('dailyMarketUpdate', () => {
-  it('drops expired offers and fires a contract_lost event naming a rival', () => {
+  it("replaces yesterday's unsigned offers with a fresh daily batch", () => {
     const company = createCompany();
     const factory = createFactory('f1', 'Test');
     factory.availableContracts.push({
-      id: 'ct_1', clientName: 'Embouteilleur régional', familyId: 'cap', quantity: 100,
-      producedGood: 0, producedReject: 0, pricePerUnit: 0.2, deadlineMs: 999999999,
-      minQualityRatio: 0.9, status: 'offered', offeredOnMs: 0, penaltyPerMissingUnit: 0.1,
+      id: 'stale-offer', clientName: 'Embouteilleur régional', familyId: 'cap',
+      pricePerUnit: 0.2, producedGood: 0, producedReject: 0, status: 'offered', offeredOnMs: 0,
     });
-    const simTimeMs = 7 * DAY_LENGTH_MS; // past the 6-day shelf life
-    dailyMarketUpdate(company, factory, simTimeMs);
-    // The expired fixture must be gone — regardless of any new offer the same
-    // call may have probabilistically generated (which could reuse the id).
-    expect(factory.availableContracts.some((c) => c.clientName === 'Embouteilleur régional' && c.offeredOnMs === 0)).toBe(false);
-    expect(factory.events.some((e) => e.kind === 'contract_lost' && e.message.includes('Embouteilleur régional'))).toBe(true);
+    dailyMarketUpdate(company, factory, 999_999);
+    // Yesterday's fixture object must be gone, even if today's batch happens
+    // to re-offer the same client (a fresh contract with a new id/price).
+    expect(factory.availableContracts.some((c) => c.id === 'stale-offer')).toBe(false);
   });
 
   it('generates contracts with familyId and family-derived pricing', () => {

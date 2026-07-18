@@ -9,7 +9,7 @@ import type { Company } from '../../sim/entities/company';
 import { requiredTonnage } from '../../sim/entities/mold';
 import { repairCost, preventiveCost } from '../../sim/systems/maintenanceSystem';
 import { AUTOMATION_UPGRADE_COST } from '../../sim/systems/financeSystem';
-import { formatCurrency, formatPercent, PRESS_STATE_LABELS, MATERIAL_FAMILY_LABELS } from '../format';
+import { formatCurrency, formatUnitPrice, formatPercent, PRESS_STATE_LABELS, MATERIAL_FAMILY_LABELS } from '../format';
 
 const TASK_LABELS: Record<string, string> = {
   repair: 'répare',
@@ -164,7 +164,7 @@ export function MachineTuningPanel() {
               >
                 <option value="">— Aucun —</option>
                 {factory.activeContracts.map((c) => (
-                  <option key={c.id} value={c.id}>{c.clientName} ({c.producedGood}/{c.quantity})</option>
+                  <option key={c.id} value={c.id}>{c.clientName} ({formatUnitPrice(c.pricePerUnit)}/pièce)</option>
                 ))}
               </select>
             </label>

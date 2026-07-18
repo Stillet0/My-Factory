@@ -10,7 +10,7 @@ import { tickLabor } from '../sim/systems/laborSystem';
 import { tickFatigue, tickOperatorStaffing, dailyHrUpdate } from '../sim/systems/hrSystem';
 import { dailyMarketUpdate } from '../sim/systems/marketSystem';
 import {
-  settleContracts,
+  cancelContract as cancelContractFinance,
   dailyFinanceUpdate,
   purchasePress,
   buildMold as buildMoldFinance,
@@ -102,6 +102,7 @@ interface GameStore {
   setUiTab: (tab: UiTab) => void;
 
   acceptContract: (factoryId: string, contractId: string) => void;
+  cancelContract: (factoryId: string, contractId: string) => void;
   assignPress: (factoryId: string, pressId: string, patch: { moldId?: string | null; materialId?: string | null; operatorId?: string | null; contractId?: string | null }) => void;
   setPressParams: (factoryId: string, pressId: string, params: Partial<ProcessParams>) => void;
   repairPress: (factoryId: string, pressId: string) => void;
@@ -157,7 +158,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         tickProduction(company, factory, tickMs, clock.simTimeMs, hourOfDay);
         tickFatigue(factory, tickMs, hourOfDay);
         tickLabor(company, factory, clock.simTimeMs, hourOfDay);
-        settleContracts(company, factory, clock.simTimeMs);
       }
       if (clock.day > lastProcessedDay) {
         lastProcessedDay = clock.day;
@@ -196,6 +196,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const [contract] = factory.availableContracts.splice(idx, 1);
     contract.status = 'active';
     factory.activeContracts.push(contract);
+    set({ tickCount: get().tickCount + 1 });
+  },
+
+  cancelContract: (factoryId, contractId) => {
+    const { company } = get();
+    const factory = findFactory(company, factoryId);
+    const result = cancelContractFinance(factory, contractId);
+    if (!result.ok) return;
     set({ tickCount: get().tickCount + 1 });
   },
 

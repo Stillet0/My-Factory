@@ -72,7 +72,10 @@ function completeTask(company: Company, factory: Factory, emp: Employee, simTime
       press.pendingGoodUnits = 0;
       if (contract) {
         contract.producedGood += delivered;
-        pushEvent(factory, simTimeMs, 'info', `${emp.name} a livré ${delivered} pièces (${contract.clientName}).`);
+        const revenue = round2(delivered * contract.pricePerUnit);
+        company.cash += revenue;
+        company.dayRevenueAccumulator += revenue;
+        pushEvent(factory, simTimeMs, 'info', `${emp.name} a livré et vendu ${delivered} pièces à ${contract.clientName} (+${revenue} €).`);
       }
     }
   }
@@ -140,15 +143,13 @@ interface ChangeoverPlan {
   operatorId: string | null;
 }
 
-/** Picks the most urgent active contract this press could still help
- * fulfill, along with a compatible mold/material/operator it can borrow
- * without pulling them off another currently-mounted press. Pure — used
- * both to decide whether a changeover is worth dispatching a setter for,
- * and to actually apply it once the setter arrives. */
+/** Picks the best-paying active contract this press could produce for,
+ * along with a compatible mold/material/operator it can borrow without
+ * pulling them off another currently-mounted press. Pure — used both to
+ * decide whether a changeover is worth dispatching a setter for, and to
+ * actually apply it once the setter arrives. */
 function planChangeover(company: Company, factory: Factory, press: Press): ChangeoverPlan | null {
-  const candidates = factory.activeContracts
-    .filter((c) => c.producedGood < c.quantity)
-    .sort((a, b) => a.deadlineMs - b.deadlineMs);
+  const candidates = [...factory.activeContracts].sort((a, b) => b.pricePerUnit - a.pricePerUnit);
 
   for (const contract of candidates) {
     const currentMold = press.moldId ? factory.molds.find((m) => m.id === press.moldId) : undefined;
@@ -207,4 +208,8 @@ function retuneTowardIdeal(press: Press, skill: number): void {
 function moveToward(value: number, range: ProcessRange, closure: number): number {
   const mid = (range.idealMin + range.idealMax) / 2;
   return value + (mid - value) * closure;
+}
+
+function round2(v: number): number {
+  return Math.round(v * 100) / 100;
 }

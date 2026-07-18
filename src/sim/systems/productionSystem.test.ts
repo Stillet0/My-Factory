@@ -65,9 +65,8 @@ describe('press/mold tech multipliers', () => {
 
 function makeContract(): Contract {
   return {
-    id: nextContractId(), clientName: 'Test Client', familyId: 'cap', quantity: 1000,
-    producedGood: 0, producedReject: 0, pricePerUnit: 0.2, deadlineMs: 999999999,
-    minQualityRatio: 0.5, status: 'active', offeredOnMs: 0, penaltyPerMissingUnit: 0.1,
+    id: nextContractId(), clientName: 'Test Client', familyId: 'cap', pricePerUnit: 0.2,
+    producedGood: 0, producedReject: 0, status: 'active', offeredOnMs: 0,
   };
 }
 

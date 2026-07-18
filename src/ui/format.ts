@@ -2,6 +2,12 @@ export function formatCurrency(v: number): string {
   return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(v)) + ' €';
 }
 
+/** For small unit prices (€/pièce) — formatCurrency's 0-decimal rounding
+ * would show most of them as "0 €". */
+export function formatUnitPrice(v: number): string {
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v) + ' €';
+}
+
 export function formatPercent(v: number): string {
   return `${Math.round(v * 100)}%`;
 }
