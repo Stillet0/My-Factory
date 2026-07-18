@@ -38,6 +38,11 @@ export function settleContracts(company: Company, factory: Factory, simTimeMs: n
         company.reputation = clamp01(company.reputation - 0.03);
         pushEvent(factory, simTimeMs, 'contract_failed', `${contract.clientName}: commande manquée, réputation entamée.`);
       }
+      for (const press of factory.presses) {
+        if (press.contractId === contract.id) {
+          press.contractId = null;
+        }
+      }
       continue;
     }
     stillActive.push(contract);
