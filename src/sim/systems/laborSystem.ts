@@ -5,12 +5,15 @@ import { isOnShiftNow, type Employee } from '../entities/employee';
 import type { Press } from '../entities/press';
 import type { ProcessRange } from '../entities/material';
 import { deviationSeverity } from '../entities/material';
+import type { Contract } from '../entities/contract';
 import { getMaterial } from '../../data/materials';
 import { getPressTemplate } from '../../data/presses';
+import { resolveMoldTemplate } from '../../data/molds';
 import { repairCost, performRepair } from './maintenanceSystem';
 
 export const REPAIR_TASK_MS = 30_000;
 export const TUNE_TASK_MS = 18_000;
+export const CHANGEOVER_TASK_MS = 40_000;
 export const DELIVER_TASK_MS = 22_000;
 
 /** A parameter is flagged for a setter visit once it drifts this far past
@@ -18,10 +21,14 @@ export const DELIVER_TASK_MS = 22_000;
  * outer edge of the still-acceptable range). */
 const TUNE_SEVERITY_THRESHOLD = 0.12;
 
-/** Setters autonomously walk from press to press, repairing breakdowns and
- * correcting drifted process parameters; forklifts walk boxed output to
- * shipping, crediting the contract only once actually delivered. Both only
- * act while on shift — an idle/off-shift setter or forklift just waits. */
+type SetterTask = 'repair' | 'tune' | 'changeover';
+
+/** Setters autonomously walk from press to press, repairing breakdowns,
+ * correcting drifted process parameters, and readying an idle press for its
+ * next contract (picking a compatible mold/material/operator and mounting
+ * them); forklifts walk boxed output to shipping, crediting the contract
+ * only once actually delivered. Both only act while on shift — an
+ * idle/off-shift setter or forklift just waits. */
 export function tickLabor(company: Company, factory: Factory, simTimeMs: number, hourOfDay: number): void {
   for (const emp of factory.employees) {
     if (emp.role !== 'setter' && emp.role !== 'forklift') continue;
@@ -47,6 +54,18 @@ function completeTask(company: Company, factory: Factory, emp: Employee, simTime
     } else if (emp.task === 'tune') {
       retuneTowardIdeal(press, emp.skill);
       pushEvent(factory, simTimeMs, 'info', `${emp.name} a corrigé les réglages de ${templateName}.`);
+    } else if (emp.task === 'changeover') {
+      // Re-plan from the current state rather than trusting the plan made
+      // when the setter set off — a player or another setter may have
+      // changed things during the walk over.
+      const plan = planChangeover(company, factory, press);
+      if (plan) {
+        press.moldId = plan.moldId;
+        press.materialId = plan.materialId;
+        press.operatorId = plan.operatorId;
+        press.contractId = plan.contract.id;
+        pushEvent(factory, simTimeMs, 'info', `${emp.name} a préparé ${templateName} pour ${plan.contract.clientName}.`);
+      }
     } else if (emp.task === 'deliver' && press.pendingGoodUnits > 0) {
       const contract = factory.activeContracts.find((c) => c.id === press.contractId);
       const delivered = press.pendingGoodUnits;
@@ -68,7 +87,8 @@ function assignTask(company: Company, factory: Factory, emp: Employee, simTimeMs
     if (!target) return;
     emp.assignedPressId = target.press.id;
     emp.task = target.task;
-    emp.taskEndMs = simTimeMs + (target.task === 'repair' ? REPAIR_TASK_MS : TUNE_TASK_MS);
+    const durationMs = target.task === 'repair' ? REPAIR_TASK_MS : target.task === 'changeover' ? CHANGEOVER_TASK_MS : TUNE_TASK_MS;
+    emp.taskEndMs = simTimeMs + durationMs;
   } else {
     const target = findDeliveryTarget(factory);
     if (!target) return;
@@ -78,17 +98,23 @@ function assignTask(company: Company, factory: Factory, emp: Employee, simTimeMs
   }
 }
 
-function claimedPressIds(factory: Factory, task: 'repair' | 'tune' | 'deliver'): Set<string> {
+function claimedPressIds(factory: Factory, task: SetterTask | 'deliver'): Set<string> {
   const ids = factory.employees
     .filter((e) => e.task === task && e.assignedPressId)
     .map((e) => e.assignedPressId as string);
   return new Set(ids);
 }
 
-function findSetterTarget(company: Company, factory: Factory): { press: Press; task: 'repair' | 'tune' } | null {
+function findSetterTarget(company: Company, factory: Factory): { press: Press; task: SetterTask } | null {
   const repairClaimed = claimedPressIds(factory, 'repair');
   const faulty = factory.presses.find((p) => p.state === 'fault' && !repairClaimed.has(p.id) && company.cash >= repairCost(p));
   if (faulty) return { press: faulty, task: 'repair' };
+
+  const changeoverClaimed = claimedPressIds(factory, 'changeover');
+  const needsSetup = factory.presses.find(
+    (p) => p.state !== 'fault' && !p.contractId && !changeoverClaimed.has(p.id) && planChangeover(company, factory, p) !== null,
+  );
+  if (needsSetup) return { press: needsSetup, task: 'changeover' };
 
   const tuneClaimed = claimedPressIds(factory, 'tune');
   const drifted = factory.presses.find((p) => !tuneClaimed.has(p.id) && p.materialId && isBadlyTuned(p));
@@ -105,6 +131,52 @@ function findDeliveryTarget(factory: Factory): Press | null {
     if (!best || press.pendingGoodUnits > best.pendingGoodUnits) best = press;
   }
   return best;
+}
+
+interface ChangeoverPlan {
+  contract: Contract;
+  moldId: string;
+  materialId: string;
+  operatorId: string | null;
+}
+
+/** Picks the most urgent active contract this press could still help
+ * fulfill, along with a compatible mold/material/operator it can borrow
+ * without pulling them off another currently-mounted press. Pure — used
+ * both to decide whether a changeover is worth dispatching a setter for,
+ * and to actually apply it once the setter arrives. */
+function planChangeover(company: Company, factory: Factory, press: Press): ChangeoverPlan | null {
+  const candidates = factory.activeContracts
+    .filter((c) => c.producedGood < c.quantity)
+    .sort((a, b) => a.deadlineMs - b.deadlineMs);
+
+  for (const contract of candidates) {
+    const currentMold = press.moldId ? factory.molds.find((m) => m.id === press.moldId) : undefined;
+    const currentMatches = currentMold && resolveMoldTemplate(company, currentMold.templateId).familyId === contract.familyId;
+
+    const chosenMold = currentMatches
+      ? currentMold!
+      : factory.molds.find(
+          (m) =>
+            resolveMoldTemplate(company, m.templateId).familyId === contract.familyId &&
+            !factory.presses.some((p) => p.id !== press.id && p.moldId === m.id),
+        );
+    if (!chosenMold) continue;
+    const moldId = chosenMold.id;
+
+    const moldTemplate = resolveMoldTemplate(company, chosenMold.templateId);
+    const materialId =
+      press.materialId && moldTemplate.compatibleMaterialIds.includes(press.materialId)
+        ? press.materialId
+        : moldTemplate.compatibleMaterialIds.find((id) => (factory.materialStockKg[id] ?? 0) > 0) ?? moldTemplate.compatibleMaterialIds[0];
+    if (!materialId) continue;
+
+    const operatorId =
+      press.operatorId ?? factory.employees.find((e) => e.role === 'operator' && !factory.presses.some((p) => p.operatorId === e.id))?.id ?? null;
+
+    return { contract, moldId, materialId, operatorId };
+  }
+  return null;
 }
 
 function isBadlyTuned(press: Press): boolean {

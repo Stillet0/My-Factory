@@ -2,9 +2,10 @@ export type EmployeeRole = 'operator' | 'setter' | 'forklift';
 export type Shift = 'morning' | 'evening' | 'night';
 
 /** Autonomous job a setter/forklift is currently walking to a press to
- * perform — repair a breakdown, correct drifted process params, or ship out
- * boxed output. Operators don't use this; they stay parked at their press. */
-export type EmployeeTask = 'repair' | 'tune' | 'deliver' | null;
+ * perform — repair a breakdown, correct drifted process params, ready an
+ * idle press for its next contract, or ship out boxed output. Operators
+ * don't use this; they stay parked at their press. */
+export type EmployeeTask = 'repair' | 'tune' | 'changeover' | 'deliver' | null;
 
 export interface Employee {
   id: string;

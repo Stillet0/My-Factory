@@ -11,6 +11,13 @@ import { repairCost, preventiveCost } from '../../sim/systems/maintenanceSystem'
 import { AUTOMATION_UPGRADE_COST } from '../../sim/systems/financeSystem';
 import { formatCurrency, formatPercent, PRESS_STATE_LABELS, MATERIAL_FAMILY_LABELS } from '../format';
 
+const TASK_LABELS: Record<string, string> = {
+  repair: 'répare',
+  tune: 'ajuste les réglages de',
+  changeover: 'prépare',
+  deliver: 'charge une livraison depuis',
+};
+
 function ParamSlider({
   label, unit, range, value, onChange,
 }: { label: string; unit: string; range: ProcessRange; value: number; onChange: (v: number) => void }) {
@@ -42,6 +49,7 @@ export function MachineTuningPanel() {
 
   if (!factory) return null;
   const press = factory.presses.find((p) => p.id === selectedPressId) ?? factory.presses[0] ?? null;
+  const worker = press ? factory.employees.find((e) => e.assignedPressId === press.id && e.task) : undefined;
 
   return (
     <div className="panel">
@@ -69,6 +77,12 @@ export function MachineTuningPanel() {
             <span>Cycles : {press.cyclesRun}</span>
             <span>En attente de livraison : {press.pendingGoodUnits}</span>
           </div>
+
+          {worker && (
+            <div className="alert alert--info">
+              {worker.name} {TASK_LABELS[worker.task!]} cette presse…
+            </div>
+          )}
 
           {press.state === 'fault' && (
             <div className="alert alert--danger">
