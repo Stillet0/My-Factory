@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { PhaserGame } from './render/PhaserGame';
 import { Dashboard } from './ui/Dashboard';
 import { ContractsPanel } from './ui/panels/ContractsPanel';
@@ -8,15 +7,13 @@ import { FinancePanel } from './ui/panels/FinancePanel';
 import { MoldDesignPanel } from './ui/panels/MoldDesignPanel';
 import { ResearchPanel } from './ui/panels/ResearchPanel';
 import { LogisticsPanel } from './ui/panels/LogisticsPanel';
-import { useGameStore } from './store/gameStore';
+import { useGameStore, type UiTab } from './store/gameStore';
 import type { SimSpeed } from './sim/clock';
 import { DAY_LENGTH_MS } from './sim/clock';
 import { foundFactoryCost } from './sim/systems/financeSystem';
 import { formatCurrency, formatDay, formatTimeOfDay } from './ui/format';
 
-type Tab = 'dashboard' | 'contracts' | 'machines' | 'hr' | 'finance' | 'design' | 'research' | 'logistics';
-
-const BASE_TABS: { id: Tab; label: string }[] = [
+const BASE_TABS: { id: UiTab; label: string }[] = [
   { id: 'dashboard', label: 'Vue d’ensemble' },
   { id: 'contracts', label: 'Contrats' },
   { id: 'machines', label: 'Presses' },
@@ -29,8 +26,9 @@ const BASE_TABS: { id: Tab; label: string }[] = [
 const SPEEDS: SimSpeed[] = [0, 1, 2, 4];
 
 function App() {
-  const [tab, setTab] = useState<Tab>('dashboard');
   useGameStore((s) => s.tickCount);
+  const tab = useGameStore((s) => s.uiTab);
+  const setTab = useGameStore((s) => s.setUiTab);
   const {
     clock, company, selectedFactoryId, setSpeed, saveGame, loadGame, resetGame, hasExistingSave, foundFactory, selectFactory,
   } = useGameStore.getState();

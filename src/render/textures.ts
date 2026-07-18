@@ -2,16 +2,18 @@ import Phaser from 'phaser';
 
 /** Procedurally bakes small pixel-art-style textures so the game ships with
  * zero binary assets. Nearest-neighbour filtering (pixelArt:true on the game
- * config) keeps them crisp/blocky when scaled up. */
+ * config) keeps them crisp/blocky when scaled up. Everything is drawn as seen
+ * from directly overhead (top-down factory floor plan). */
 export function generateTextures(scene: Phaser.Scene): void {
   const g = scene.add.graphics();
 
   bakeFloorTile(g, scene);
-  bakePressBody(g, scene);
-  bakePlaten(g, scene);
-  bakeEmployee(g, scene, 'emp_operator', 0x3b82f6);
-  bakeEmployee(g, scene, 'emp_setter', 0xf59e0b);
-  bakeEmployee(g, scene, 'emp_forklift', 0x22c55e);
+  bakePressChassis(g, scene);
+  bakePressBarrel(g, scene);
+  bakePressPlatenH(g, scene);
+  bakeWorkerToken(g, scene, 'emp_operator', 0x3b82f6);
+  bakeWorkerToken(g, scene, 'emp_setter', 0xf59e0b);
+  bakeWorkerToken(g, scene, 'emp_forklift', 0x22c55e);
   bakeHoistTrolley(g, scene);
   bakeMoldBlock(g, scene);
   bakeStatusDot(g, scene);
@@ -21,63 +23,69 @@ export function generateTextures(scene: Phaser.Scene): void {
 
 function bakeFloorTile(g: Phaser.GameObjects.Graphics, scene: Phaser.Scene): void {
   g.clear();
-  g.fillStyle(0x2b2e35, 1);
+  g.fillStyle(0x24262d, 1);
   g.fillRect(0, 0, 32, 32);
-  g.lineStyle(1, 0x35383f, 1);
+  g.lineStyle(1, 0x2c2f37, 1);
   g.strokeRect(0, 0, 32, 32);
-  g.fillStyle(0x313540, 1);
+  g.fillStyle(0x282a32, 1);
   g.fillRect(0, 0, 16, 16);
   g.fillRect(16, 16, 16, 16);
   g.generateTexture('floor_tile', 32, 32);
   if (scene.textures.get('floor_tile')) scene.textures.get('floor_tile').setFilter(Phaser.Textures.FilterMode.NEAREST);
 }
 
-function bakePressBody(g: Phaser.GameObjects.Graphics, scene: Phaser.Scene): void {
+/** Flat chassis strip, seen from above — the machine's footprint on the floor. */
+function bakePressChassis(g: Phaser.GameObjects.Graphics, scene: Phaser.Scene): void {
   g.clear();
-  const w = 64;
-  const h = 56;
-  g.fillStyle(0x53585f, 1);
-  g.fillRect(0, 20, w, h - 20);
+  const w = 130;
+  const h = 26;
+  g.fillStyle(0x2f3238, 1);
+  g.fillRect(0, 0, w, h);
   g.fillStyle(0x3d4147, 1);
-  g.fillRect(0, h - 10, w, 10);
-  g.fillStyle(0x6b7178, 1);
-  g.fillRect(4, 24, w - 8, 8);
-  g.fillStyle(0x23252a, 1);
-  g.fillRect(10, 0, w - 20, 22);
-  g.generateTexture('press_body', w, h);
-  scene.textures.get('press_body')?.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  g.fillRect(3, 3, w - 6, h - 6);
+  g.generateTexture('press_chassis', w, h);
+  scene.textures.get('press_chassis')?.setFilter(Phaser.Textures.FilterMode.NEAREST);
 }
 
-function bakePlaten(g: Phaser.GameObjects.Graphics, scene: Phaser.Scene): void {
+/** Injection barrel — a fixed unit feeding the mold along the machine's
+ * horizontal clamping axis (the real orientation of an injection press). */
+function bakePressBarrel(g: Phaser.GameObjects.Graphics, scene: Phaser.Scene): void {
   g.clear();
-  const w = 48;
-  const h = 14;
+  const w = 36;
+  const h = 12;
+  g.fillStyle(0x6b7178, 1);
+  g.fillRect(0, 0, w, h);
+  g.fillStyle(0x8b8f96, 1);
+  g.fillRect(2, 2, w - 4, h - 4);
+  g.generateTexture('press_barrel', w, h);
+  scene.textures.get('press_barrel')?.setFilter(Phaser.Textures.FilterMode.NEAREST);
+}
+
+/** One clamp platen (fixed or moving) — reused for both halves of the mold. */
+function bakePressPlatenH(g: Phaser.GameObjects.Graphics, scene: Phaser.Scene): void {
+  g.clear();
+  const w = 16;
+  const h = 40;
   g.fillStyle(0x8b8f96, 1);
   g.fillRect(0, 0, w, h);
   g.fillStyle(0x6b7178, 1);
-  g.fillRect(0, h - 4, w, 4);
-  g.generateTexture('press_platen', w, h);
-  scene.textures.get('press_platen')?.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  g.fillRect(0, 0, 4, h);
+  g.generateTexture('press_platen_h', w, h);
+  scene.textures.get('press_platen_h')?.setFilter(Phaser.Textures.FilterMode.NEAREST);
 }
 
-function bakeEmployee(g: Phaser.GameObjects.Graphics, scene: Phaser.Scene, key: string, shirtColor: number): void {
+/** Top-down worker token: a colored disc (role color) with a small highlight,
+ * since a walking humanoid silhouette only reads correctly from the side. */
+function bakeWorkerToken(g: Phaser.GameObjects.Graphics, scene: Phaser.Scene, key: string, color: number): void {
   g.clear();
-  const w = 12;
-  const h = 22;
-  // legs
-  g.fillStyle(0x2b2e35, 1);
-  g.fillRect(2, h - 8, 3, 8);
-  g.fillRect(w - 5, h - 8, 3, 8);
-  // torso
-  g.fillStyle(shirtColor, 1);
-  g.fillRect(1, 7, w - 2, 10);
-  // head
-  g.fillStyle(0xe8c39e, 1);
-  g.fillRect(3, 0, w - 6, 7);
-  // hard hat
-  g.fillStyle(0xf59e0b, 1);
-  g.fillRect(2, 0, w - 4, 3);
-  g.generateTexture(key, w, h);
+  const d = 16;
+  g.fillStyle(0x14161b, 1);
+  g.fillCircle(d / 2, d / 2, d / 2);
+  g.fillStyle(color, 1);
+  g.fillCircle(d / 2, d / 2, d / 2 - 2);
+  g.fillStyle(0xffffff, 0.5);
+  g.fillCircle(d / 2 - 2, d / 2 - 2, 2);
+  g.generateTexture(key, d, d);
   scene.textures.get(key)?.setFilter(Phaser.Textures.FilterMode.NEAREST);
 }
 

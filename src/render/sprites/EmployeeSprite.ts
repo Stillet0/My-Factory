@@ -16,7 +16,7 @@ export class EmployeeSprite {
   private wanderTimer = 0;
 
   constructor(scene: Phaser.Scene, role: Employee['role'], x: number, y: number) {
-    this.sprite = scene.add.image(x, y, TEXTURE_BY_ROLE[role]).setOrigin(0.5, 1);
+    this.sprite = scene.add.image(x, y, TEXTURE_BY_ROLE[role]);
     this.targetX = x;
     this.targetY = y;
   }
@@ -36,7 +36,6 @@ export class EmployeeSprite {
       const step = Math.min(dist, speed);
       this.sprite.x += (dx / dist) * step;
       this.sprite.y += (dy / dist) * step;
-      this.sprite.setFlipX(dx < 0);
     } else if (onShift) {
       this.wanderTimer -= deltaMs;
       if (this.wanderTimer <= 0) {

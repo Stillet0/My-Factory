@@ -55,6 +55,8 @@ const LEGACY_MOLD_TO_FAMILY: Record<string, string> = {
 
 const STARTER_EMPLOYEE_NAMES: [string, string] = ['Marc Dubois', 'Sophie Laurent'];
 
+export type UiTab = 'dashboard' | 'contracts' | 'machines' | 'hr' | 'finance' | 'design' | 'research' | 'logistics';
+
 /** Seeds a brand-new factory with the same minimal starter kit as the
  * company's very first plant, so it's immediately usable rather than an
  * empty shell requiring several purchases before anything can run. */
@@ -91,9 +93,12 @@ interface GameStore {
   tickCount: number;
   selectedFactoryId: string;
   hasExistingSave: boolean;
+  /** Which sidebar panel is showing — settable from the UI or by clicking the office in the factory scene. */
+  uiTab: UiTab;
 
   update: (realDeltaMs: number) => void;
   setSpeed: (speed: SimSpeed) => void;
+  setUiTab: (tab: UiTab) => void;
 
   acceptContract: (factoryId: string, contractId: string) => void;
   assignPress: (factoryId: string, pressId: string, patch: { moldId?: string | null; materialId?: string | null; operatorId?: string | null; contractId?: string | null }) => void;
@@ -138,6 +143,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   tickCount: 0,
   selectedFactoryId: 'factory_1',
   hasExistingSave: hasSave(),
+  uiTab: 'dashboard',
 
   update: (realDeltaMs: number) => {
     const { clock, company } = get();
@@ -176,6 +182,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     setClockSpeed(get().clock, speed);
     set({ tickCount: get().tickCount + 1 });
   },
+
+  setUiTab: (tab) => set({ uiTab: tab }),
 
   acceptContract: (factoryId, contractId) => {
     const { company } = get();

@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 
-/** Ambient electric hoist that travels along an overhead rail, carrying a
- * mold block back and forth — purely atmospheric factory-floor detail. */
+/** Ambient electric hoist travelling along an overhead rail, carrying a mold
+ * block back and forth between the mold rack and the press bay — seen from
+ * above, so trolley and payload just glide together with no hanging hook. */
 export class HoistSprite {
   private trolley: Phaser.GameObjects.Image;
-  private hook: Phaser.GameObjects.Rectangle;
   private mold: Phaser.GameObjects.Image;
   private minX: number;
   private maxX: number;
@@ -12,9 +12,8 @@ export class HoistSprite {
   constructor(scene: Phaser.Scene, minX: number, maxX: number, railY: number) {
     this.minX = minX;
     this.maxX = maxX;
-    this.trolley = scene.add.image(minX, railY, 'hoist_trolley');
-    this.hook = scene.add.rectangle(minX, railY + 18, 2, 24, 0x23252a);
-    this.mold = scene.add.image(minX, railY + 34, 'mold_block');
+    this.trolley = scene.add.image(minX, railY, 'hoist_trolley').setAlpha(0.85);
+    this.mold = scene.add.image(minX, railY, 'mold_block').setAlpha(0.85);
     this.startLoop(scene);
   }
 
@@ -23,7 +22,7 @@ export class HoistSprite {
       const goingRight = this.trolley.x <= this.minX + 1;
       const targetX = goingRight ? this.maxX : this.minX;
       scene.tweens.add({
-        targets: [this.trolley, this.hook, this.mold],
+        targets: [this.trolley, this.mold],
         x: targetX,
         duration: 6000,
         ease: 'Sine.easeInOut',
@@ -37,7 +36,6 @@ export class HoistSprite {
 
   destroy(): void {
     this.trolley.destroy();
-    this.hook.destroy();
     this.mold.destroy();
   }
 }
