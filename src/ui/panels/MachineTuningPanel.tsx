@@ -67,6 +67,7 @@ export function MachineTuningPanel() {
             <span>État : {PRESS_STATE_LABELS[press.state]}</span>
             <span>Usure : {formatPercent(press.wear)}</span>
             <span>Cycles : {press.cyclesRun}</span>
+            <span>En attente de livraison : {press.pendingGoodUnits}</span>
           </div>
 
           {press.state === 'fault' && (

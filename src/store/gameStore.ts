@@ -6,6 +6,7 @@ import { createPress, type ProcessParams } from '../sim/entities/press';
 import { createMold } from '../sim/entities/mold';
 import { createEmployee, type EmployeeRole, type Shift } from '../sim/entities/employee';
 import { tickProduction } from '../sim/systems/productionSystem';
+import { tickLabor } from '../sim/systems/laborSystem';
 import { tickFatigue, dailyHrUpdate } from '../sim/systems/hrSystem';
 import { dailyMarketUpdate } from '../sim/systems/marketSystem';
 import {
@@ -154,6 +155,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       for (const factory of company.factories) {
         tickProduction(company, factory, tickMs, clock.simTimeMs, hourOfDay);
         tickFatigue(factory, tickMs, hourOfDay);
+        tickLabor(company, factory, clock.simTimeMs, hourOfDay);
         settleContracts(company, factory, clock.simTimeMs);
       }
       if (clock.day > lastProcessedDay) {
@@ -384,7 +386,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
       factory.moldsInProgress ??= [];
       factory.incomingMaterialShipments ??= [];
       factory.incomingMoldTransfers ??= [];
-      for (const press of factory.presses) press.automated ??= false;
+      for (const press of factory.presses) {
+        press.automated ??= false;
+        press.pendingGoodUnits ??= 0;
+      }
+      for (const emp of factory.employees) {
+        emp.task ??= null;
+        emp.taskEndMs ??= 0;
+        emp.assignedPressId ??= null;
+      }
       for (const contract of [...factory.activeContracts, ...factory.availableContracts]) {
         const legacy = contract as unknown as { familyId?: string; moldTemplateId?: string };
         if (legacy.familyId === undefined && legacy.moldTemplateId) {

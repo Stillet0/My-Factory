@@ -39,6 +39,9 @@ export interface Press {
   faultReason: string | null;
   /** Robotized presses skip the operator/shift gate (at a small quality tradeoff). */
   automated: boolean;
+  /** Good units boxed at the press but not yet delivered — a forklift must
+   * ship them before they count toward the contract's producedGood. */
+  pendingGoodUnits: number;
 }
 
 export function defaultParamsFor(): ProcessParams {
@@ -62,6 +65,7 @@ export function createPress(id: string, templateId: string): Press {
     totalGood: 0,
     faultReason: null,
     automated: false,
+    pendingGoodUnits: 0,
   };
 }
 

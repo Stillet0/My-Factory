@@ -1,6 +1,11 @@
 export type EmployeeRole = 'operator' | 'setter' | 'forklift';
 export type Shift = 'morning' | 'evening' | 'night';
 
+/** Autonomous job a setter/forklift is currently walking to a press to
+ * perform — repair a breakdown, correct drifted process params, or ship out
+ * boxed output. Operators don't use this; they stay parked at their press. */
+export type EmployeeTask = 'repair' | 'tune' | 'deliver' | null;
+
 export interface Employee {
   id: string;
   name: string;
@@ -13,7 +18,11 @@ export interface Employee {
   /** 0..1, affected by fatigue, wage fairness and overwork; low morale risks quitting. */
   morale: number;
   wagePerDay: number;
+  /** The press a setter/forklift is currently walking to / working on for `task`. */
   assignedPressId: string | null;
+  task: EmployeeTask;
+  /** simTimeMs when the current task finishes; 0 while idle. */
+  taskEndMs: number;
   hiredOnDay: number;
 }
 
@@ -36,6 +45,8 @@ export function createEmployee(role: EmployeeRole, shift: Shift, day: number, na
     morale: 0.7,
     wagePerDay: role === 'setter' ? 140 : role === 'forklift' ? 110 : 95,
     assignedPressId: null,
+    task: null,
+    taskEndMs: 0,
     hiredOnDay: day,
   };
 }

@@ -267,9 +267,9 @@ export class FactoryScene extends Phaser.Scene {
   }
 
   private renderPartsCrates(factory: Factory, x: number, y: number, w: number): void {
-    const partsInStock = Math.round(factory.activeContracts.reduce((sum, c) => sum + c.producedGood, 0));
+    const pendingUnits = factory.presses.reduce((sum, p) => sum + p.pendingGoodUnits, 0);
     if (!this.partCountLabel) this.partCountLabel = this.add.text(0, 0, '', { fontSize: '9px', color: '#e5e7eb', fontFamily: 'monospace' });
-    this.renderIconRow(this.partIcons, 0xf59e0b, partsInStock, x, y, w, MAX_PART_ICONS, this.partCountLabel, 'Pièces en stock');
+    this.renderIconRow(this.partIcons, 0xf59e0b, Math.round(pendingUnits), x, y, w, MAX_PART_ICONS, this.partCountLabel, 'En attente de livraison');
   }
 
   private renderIconRow(
@@ -296,8 +296,7 @@ export class FactoryScene extends Phaser.Scene {
       }
     }
 
-    const overflow = count > iconCap ? ` (+${count - iconCap})` : '';
-    label.setText(`${labelPrefix}: ${count}${overflow}`).setPosition(x, y + 40);
+    label.setText(`${labelPrefix}: ${count}`).setPosition(x, y + 40);
   }
 
   private ensureHoist(layout: Layout): void {
@@ -347,9 +346,11 @@ export class FactoryScene extends Phaser.Scene {
         spr = new EmployeeSprite(this, emp.role, layout.breakX, layout.breakY);
         this.employeeSprites.set(emp.id, spr);
       }
-      const press = factory.presses.find((p) => p.operatorId === emp.id);
-      if (press) {
-        const idx = factory.presses.indexOf(press);
+      const operatedPress = emp.role === 'operator' ? factory.presses.find((p) => p.operatorId === emp.id) : undefined;
+      const taskPress = emp.task && emp.assignedPressId ? factory.presses.find((p) => p.id === emp.assignedPressId) : undefined;
+      const targetPress = operatedPress ?? taskPress;
+      if (targetPress) {
+        const idx = factory.presses.indexOf(targetPress);
         const { x, y } = this.slotPosition(idx, layout);
         spr.setTarget(x, y + 30);
       } else {

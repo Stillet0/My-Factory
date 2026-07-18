@@ -36,6 +36,9 @@ function tryStartCycle(company: Company, factory: Factory, press: Press, hourOfD
   const mold = factory.molds.find((m) => m.id === press.moldId);
   const contract = factory.activeContracts.find((c) => c.id === press.contractId);
   if (!mold || !contract || isComplete(contract)) return;
+  // Already produced (or boxed awaiting pickup) enough to cover the order —
+  // don't keep grinding out material while a forklift catches up on delivery.
+  if (contract.producedGood + press.pendingGoodUnits >= contract.quantity) return;
   const template = resolveMoldTemplate(company, mold.templateId);
   if (template.familyId !== contract.familyId) return;
 
@@ -100,9 +103,12 @@ function completeCycle(company: Company, factory: Factory, press: Press, mold: M
   press.totalGood += outcome.good;
   press.totalDefects += outcome.reject;
 
+  // Good units are boxed at the press, not yet delivered — a forklift has to
+  // ship them before they count toward the contract. Rejects need no
+  // delivery, so they're scrapped/tallied immediately.
+  press.pendingGoodUnits += outcome.good;
   const contract = factory.activeContracts.find((c) => c.id === press.contractId);
   if (contract) {
-    contract.producedGood += outcome.good;
     contract.producedReject += outcome.reject;
   }
 
