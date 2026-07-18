@@ -10,8 +10,9 @@ import { ResearchPanel } from './ui/panels/ResearchPanel';
 import { LogisticsPanel } from './ui/panels/LogisticsPanel';
 import { useGameStore } from './store/gameStore';
 import type { SimSpeed } from './sim/clock';
+import { DAY_LENGTH_MS } from './sim/clock';
 import { foundFactoryCost } from './sim/systems/financeSystem';
-import { formatCurrency, formatDay } from './ui/format';
+import { formatCurrency, formatDay, formatTimeOfDay } from './ui/format';
 
 type Tab = 'dashboard' | 'contracts' | 'machines' | 'hr' | 'finance' | 'design' | 'research' | 'logistics';
 
@@ -41,7 +42,10 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Plastique Tycoon</h1>
-        <span className="app-header__day">{formatDay(clock.day)}</span>
+        <span className="app-header__day">
+          {formatDay(clock.day)}
+          <span className="app-header__time">{formatTimeOfDay(clock.simTimeMs, DAY_LENGTH_MS)}</span>
+        </span>
         <div className="speed-controls">
           {SPEEDS.map((s) => (
             <button

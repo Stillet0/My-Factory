@@ -10,6 +10,15 @@ export function formatDay(day: number): string {
   return `Jour ${day + 1}`;
 }
 
+/** Formats the time-of-day (HH:MM) from simulated ms elapsed, given the day length in ms. */
+export function formatTimeOfDay(simTimeMs: number, dayLengthMs: number): string {
+  const msIntoDay = simTimeMs % dayLengthMs;
+  const totalMinutes = Math.floor((msIntoDay / dayLengthMs) * 24 * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
 export const PRESS_STATE_LABELS: Record<string, string> = {
   idle: 'À l’arrêt',
   clamping: 'Fermeture moule',
