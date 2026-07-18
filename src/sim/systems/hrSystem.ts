@@ -14,6 +14,31 @@ export function tickFatigue(factory: Factory, tickMs: number, hourOfDay: number)
   }
 }
 
+/** Keeps every ready press (mold + material + contract set, not automated)
+ * staffed with whichever on-shift operator is free to cover it. Operators
+ * self-assign to an unmanned press and hand off automatically as shifts
+ * turn over — the player only needs to hire enough coverage, not re-pick
+ * an operator by hand every 8 hours. Never pulls an operator off a press
+ * they're already covering, so a stable assignment isn't churned for no
+ * reason. */
+export function tickOperatorStaffing(factory: Factory, hourOfDay: number): void {
+  for (const press of factory.presses) {
+    if (press.automated) continue;
+    if (!press.moldId || !press.materialId || !press.contractId) continue;
+
+    const current = press.operatorId ? factory.employees.find((e) => e.id === press.operatorId) : undefined;
+    if (current && isOnShiftNow(current.shift, hourOfDay)) continue;
+
+    const replacement = factory.employees.find(
+      (e) =>
+        e.role === 'operator' &&
+        isOnShiftNow(e.shift, hourOfDay) &&
+        !factory.presses.some((p) => p.id !== press.id && p.operatorId === e.id),
+    );
+    if (replacement) press.operatorId = replacement.id;
+  }
+}
+
 /** Slower morale/skill/turnover pass, called once per in-game day. */
 export function dailyHrUpdate(factory: Factory, simTimeMs: number): void {
   const remaining: typeof factory.employees = [];

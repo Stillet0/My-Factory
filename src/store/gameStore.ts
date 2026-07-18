@@ -7,7 +7,7 @@ import { createMold } from '../sim/entities/mold';
 import { createEmployee, type EmployeeRole, type Shift } from '../sim/entities/employee';
 import { tickProduction } from '../sim/systems/productionSystem';
 import { tickLabor } from '../sim/systems/laborSystem';
-import { tickFatigue, dailyHrUpdate } from '../sim/systems/hrSystem';
+import { tickFatigue, tickOperatorStaffing, dailyHrUpdate } from '../sim/systems/hrSystem';
 import { dailyMarketUpdate } from '../sim/systems/marketSystem';
 import {
   settleContracts,
@@ -153,6 +153,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       dirty = true;
       const hourOfDay = (clock.simTimeMs % DAY_LENGTH_MS) / DAY_LENGTH_MS * 24;
       for (const factory of company.factories) {
+        tickOperatorStaffing(factory, hourOfDay);
         tickProduction(company, factory, tickMs, clock.simTimeMs, hourOfDay);
         tickFatigue(factory, tickMs, hourOfDay);
         tickLabor(company, factory, clock.simTimeMs, hourOfDay);
